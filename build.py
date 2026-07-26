@@ -8,7 +8,7 @@ html = (root / "index.html").read_text()
 css = (root / "src/styles.css").read_text()
 html = html.replace('<link rel="stylesheet" href="src/styles.css">', "<style>\n" + css + "\n</style>")
 
-for name in ["data", "model", "sankey", "charts", "ui"]:
+for name in ["logos", "data", "model", "sankey", "charts", "ui"]:
     js = (root / f"src/{name}.js").read_text()
     html = html.replace(f'<script src="src/{name}.js"></script>', "<script>\n" + js + "\n</script>")
 

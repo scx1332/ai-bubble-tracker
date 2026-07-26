@@ -6,10 +6,22 @@
 
 window.Sankey = (function () {
   const NS = "http://www.w3.org/2000/svg";
-  const W = 1080, NODE_W = 12, TOP = 16, GAP = 13;
-  const COL_X = [46, 372, 690, 1010];
+  const W = 1180, NODE_W = 12, TOP = 16, GAP = 13;
+  const COL_X = [46, 392, 700, 1130];
   const PLOT_H = 470, LOOP_PAD = 78;
   const H = TOP + PLOT_H + LOOP_PAD;
+  // how much horizontal room a column's labels may occupy before they would
+  // run into the neighbouring column's labels
+  const LABEL_W = [300, 280, 170, 200];
+  const CHAR_W = 6.15; // ≈ 11.5px semibold system sans
+
+  function fitText(s, maxW) {
+    if (!s) return "";
+    const max = Math.floor(maxW / CHAR_W);
+    if (s.length <= max) return s;
+    if (max <= 2) return "";
+    return s.slice(0, max - 1).replace(/[\s,&·]+$/, "") + "…";
+  }
 
   function el(name, attrs, parent) {
     const e = document.createElementNS(NS, name);
@@ -128,7 +140,10 @@ window.Sankey = (function () {
       lbl.textContent = "↺ " + fmt(l.value);
     });
 
-    // nodes + labels
+    // nodes + labels. Labels are truncated to their column's budget and
+    // pushed down past the previous label in the same column, so neither
+    // neighbouring columns nor thin adjacent nodes collide.
+    const colBottom = [-1e6, -1e6, -1e6, -1e6];
     flows.nodes.forEach(nd => {
       const n = nodes[nd.id];
       if (!n || n.value <= 0.25 || n.x == null) return;
@@ -138,13 +153,30 @@ window.Sankey = (function () {
         role: "img", "aria-label": `${n.label}: ${fmt(n.value)}`,
       }, gNodes);
       r._node = n;
+
       const anchor = n.col === 3 ? "end" : "start";
       const lx = n.col === 3 ? n.x - 7 : n.x + NODE_W + 7;
-      const ly = Math.min(n.y + 11, TOP + PLOT_H - 4);
-      const t1 = el("text", { x: lx, y: ly, "text-anchor": anchor, class: "node-label" }, gNodes);
-      t1.textContent = n.label;
-      const t2 = el("text", { x: lx, y: ly + 13, "text-anchor": anchor, class: "node-value" }, gNodes);
-      t2.textContent = fmt(n.value);
+      const budget = LABEL_W[n.col];
+      // a thin node cannot carry a stacked name + value without colliding
+      // with its neighbour, so it gets one combined line instead
+      const twoLine = n.h >= 26;
+      const need = twoLine ? 24 : 12;
+      let ly = Math.max(n.y + 11, colBottom[n.col] + 12);
+      ly = Math.min(ly, TOP + PLOT_H - 3);
+      colBottom[n.col] = ly + (twoLine ? 13 : 0);
+
+      if (twoLine) {
+        const t1 = el("text", { x: lx, y: ly, "text-anchor": anchor, class: "node-label" }, gNodes);
+        t1.textContent = fitText(n.label, budget);
+        const t2 = el("text", { x: lx, y: ly + 13, "text-anchor": anchor, class: "node-value" }, gNodes);
+        t2.textContent = fmt(n.value);
+      } else {
+        const t1 = el("text", { x: lx, y: ly, "text-anchor": anchor, class: "node-label" }, gNodes);
+        const val = fmt(n.value);
+        t1.textContent = fitText(n.label, budget - (val.length + 1) * CHAR_W) + " ";
+        const tv = el("tspan", { class: "node-value" }, t1);
+        tv.textContent = val;
+      }
     });
 
     // ---- interaction ----

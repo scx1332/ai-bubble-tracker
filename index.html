@@ -16,7 +16,14 @@
     <p class="tagline">Money in, money out, and the revenue the buildout has to earn. Drag the assumptions; the ecosystem re-computes.</p>
   </div>
   <div class="header-actions">
-    <div class="seg" id="scenarios" role="group" aria-label="Scenario presets"></div>
+    <div class="seg-wrap">
+      <span class="seg-label">bloc</span>
+      <div class="seg" id="blocs" role="group" aria-label="Which bloc to model"></div>
+    </div>
+    <div class="seg-wrap">
+      <span class="seg-label">scenario</span>
+      <div class="seg" id="scenarios" role="group" aria-label="Scenario presets"></div>
+    </div>
     <button id="themeToggle" class="ghost-btn" type="button" aria-label="Toggle color theme">◐ theme</button>
   </div>
 </header>
@@ -36,7 +43,7 @@
 <main class="layout">
   <aside class="controls" id="controls" aria-label="Model assumptions">
     <div class="controls-head">
-      <span class="eyebrow">assumptions</span>
+      <span class="eyebrow">assumptions · <span id="controlsBloc">US-led</span></span>
       <button id="resetBtn" class="ghost-btn" type="button">reset</button>
     </div>
     <div id="controlGroups"></div>
@@ -74,6 +81,7 @@
       <section class="card chart-card" id="capexCard"></section>
       <section class="card chart-card" id="inoutCard"></section>
       <section class="card chart-card" id="capacityCard"></section>
+      <section class="card chart-card span-2" id="blocCard"></section>
     </div>
   </div>
 </main>
@@ -82,7 +90,7 @@
   <div class="section-head">
     <div class="eyebrow">the cast</div>
     <h2>Who's in the ecosystem</h2>
-    <p>Latest publicly reported or estimated figures, grouped by role. Small players are folded into virtual groups. These actuals seed the model's defaults.</p>
+    <p>Latest publicly reported or estimated figures, grouped by role and by bloc. Small players are folded into virtual groups. These actuals seed the model's defaults.</p>
   </div>
   <div id="companiesRoot"></div>
 </section>
@@ -99,6 +107,7 @@
   <p id="footNote"></p>
 </footer>
 
+<script src="src/logos.js"></script>
 <script src="src/data.js"></script>
 <script src="src/model.js"></script>
 <script src="src/sankey.js"></script>

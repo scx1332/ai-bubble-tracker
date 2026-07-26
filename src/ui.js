@@ -471,6 +471,7 @@
           <li>Model capability itself: a real jump — or a wall — moves demand in ways no slider here captures</li>
           <li>Contracted-but-undelivered obligations: about ${fmtB(A.contractedBacklog)} of remaining performance obligations sit across Microsoft, Oracle, Google and CoreWeave — committed future flows this model only implies</li>
           <li>Second-order effects: memory prices reverting to the mean, power and grid limits, debt refinancing walls, and the possibility that one bloc's silicon breakthrough resets the other's economics</li>
+          <li>Utilization. Capacity here is either built or not; in reality a great deal of it sits idle while other capacity is scarce. China reports roughly 37% average utilization nationally, with parts of the state cluster network above 60% idle, at the same time as its tier-1 platforms report no spare capacity at all. An average across those two markets describes neither.</li>
         </ul>
       </div>
       <div class="method-block">

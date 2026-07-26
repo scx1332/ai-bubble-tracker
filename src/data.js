@@ -145,6 +145,16 @@ window.DATA = (function () {
       ],
     },
     {
+      id: "cnPlatforms", name: "Chinese cloud platforms", cols: COLS_CN_PLAT, bloc: "cn",
+      note: "They fund the buildout from their own cash flow rather than from capital markets, which is why there is no circular vendor financing here on the US scale — and why the cost lands visibly in their operating profit.",
+      companies: [
+        { name: "Alibaba", logo: "alibaba", period: "FY2026 (Mar)", revenue: 148.4, netIncome: 14.8, capex: 18.6, capexGuide: 56, aiRev: 22.9, shareholder: null, tag: "first quarterly operating loss since the COVID era; FCF −$6.8B; AI is 30% of external cloud revenue, guided above 50%; 3-year AI program to “far exceed” $56B" },
+        { name: "ByteDance", logo: "bytedance", period: "FY2025 est", revenue: 186, netIncome: null, capex: 23, capexGuide: 29.4, aiRev: null, shareholder: null, tag: "largest AI capex in China, with up to $70B reportedly under consideration; valued ~$550B; Doubao runs >200M DAU on under $54M of annualized revenue" },
+        { name: "Tencent", logo: "tencent", period: "FY2025", revenue: 107.5, netIncome: 32.1, capex: 11.3, capexGuide: null, aiRev: null, shareholder: null, tag: "capex only 10.5% of revenue — chip curbs blocked planned spend; AI product spend doubling to ~$5.2B in 2026; new AI products cost ~$1.3B of operating profit in Q1 alone" },
+        { name: "Baidu", logo: "baidu", period: "FY2025 + Q1 2026", revenue: 18.5, netIncome: 0.8, capex: 1.7, capexGuide: null, aiRev: 5.1, shareholder: null, tag: "AI crossed 52% of core revenue, partly because legacy search ads fell 29%; Kunlunxin spin-off re-rated from ~$3B to a ~$50B listing target in seven months" },
+      ],
+    },
+    {
       id: "cnLabs", name: "Chinese AI labs", cols: COLS_PRIVATE, bloc: "cn",
       note: "Chinese models now serve ~58% of the tokens consumed by US firms, at a tenth to a thirtieth of US prices — so they win volume share and lose revenue share. Hong Kong's January 2026 listing window re-rated the sector 5–17× in weeks on revenues still measured in tens of millions.",
       companies: [
@@ -287,11 +297,17 @@ window.DATA = (function () {
     vendorHistory: { 2024: 4, 2025: 10 },
 
     // aiCapex: China AI/datacenter capex, platforms + state/telco projects.
-    //   ~$70B (2025 actual) rising to $100–120B (2026E) — roughly a sixth of
-    //   the US-led bloc, which guides to ~$800B for the big five alone.
+    //   Bernstein puts total China AI capex at ~$91B in 2025 (+51% YoY);
+    //   the listed floor (Alibaba $18.6B + Tencent $11.3B + Baidu $1.7B) is
+    //   only ~$33B, with ByteDance's ~$23B and state/telco projects on top.
+    //   Roughly a fifth of the US-led bloc — and Chinese cloud capex runs
+    //   ~10% of revenue against ~27% in the US.
+    // endRev: end-customer AI revenue. The pure-play model layer is tiny
+    //   (~$1B across DeepSeek, Zhipu, Moonshot, MiniMax and 01.AI combined);
+    //   almost all of it is AI cloud and government/enterprise tenders.
     history: {
-      2024: { aiCapex: 45, endRev: 6, vc: 45, debt: 25, returns: 40, gwAdded: 2 },
-      2025: { aiCapex: 70, endRev: 14, vc: 58, debt: 35, returns: 45, gwAdded: 3.5 },
+      2024: { aiCapex: 50, endRev: 7, vc: 45, debt: 25, returns: 40, gwAdded: 2 },
+      2025: { aiCapex: 88, endRev: 16, vc: 58, debt: 35, returns: 45, gwAdded: 4 },
     },
 
     splits: {
@@ -337,12 +353,17 @@ window.DATA = (function () {
     },
 
     defaults: {
-      // demand — CALIBRATION PENDING: refine against China AI revenue research
+      // demand. Built up as roughly $20B of AI cloud (Alibaba's AI is ~30% of
+      // external cloud revenue, Baidu's AI cloud runs ~$5B annualized, plus
+      // Tencent, Huawei and the telcos), ~$5B of model API and subscriptions
+      // (Goldman puts 2026 at RMB 35B), and ~$5B of enterprise AI tenders and
+      // applications. For scale: China is ~46% of the world's AI users and
+      // ~1.2% of global AI revenue.
       endRev26: 30,
       demandGrowth: 65,
       demandFade: 15,
-      // buildout — grounded: $70B actual 2025 → $100–120B 2026E
-      capex26: 110,
+      // buildout — ~$88B actual 2025 (Bernstein basis) → ~$115B 2026E
+      capex26: 115,
       capexGrowth: 25,      // state "AI+" push plus the platforms' raised plans
       capexFade: 10,
       gpuShare: 55,         // cheaper silicon, so relatively more spent on shells and power
@@ -460,7 +481,8 @@ window.DATA = (function () {
     "China bloc — company reporting: Huawei annual report (FY2025 revenue $130.1B, AI-chip revenue per FT); SMIC, Cambricon, Hygon, Moore Threads, MetaX, Biren and Iluvatar filings; CXMT STAR Market prospectus (Jul 2026); Zhipu and MiniMax HKEX listings. RMB converted at 6.77–6.90/USD",
     "China bloc — analysis: SemiAnalysis (Ascend production ramp, CXMT), TrendForce and Digitimes (domestic share of AI chip value 66% → 79%), Bernstein (China AI accelerator market ~$36B in 2025), Dell'Oro and IDC (China datacenter capex), PitchBook and Crunchbase (China AI venture ~$10–11B/yr 2024–25, ~$30–35B H1 2026)",
     "China bloc — state capital: government guidance funds (2,178 funds, ~$900B raised) supply ~55% of LP capital in Chinese PE/VC; Big Fund phases I–III ~$96B; National VC Guidance Fund (RMB 100B seed, RMB 1T target); NDRC national compute plan reported at RMB 2T but still in draft",
-    "China bloc — pricing and volume: published API price lists (DeepSeek, Z.ai, OpenAI, Anthropic, Google) and OpenRouter model data, July 2026 — Chinese models at roughly a tenth to a thirtieth of US prices while serving a majority of US firms' token volume",
+    "China bloc — pricing and volume: published API price lists (DeepSeek, Z.ai, OpenAI, Anthropic, Google) and OpenRouter model data, July 2026 — Chinese models at roughly a tenth to a thirtieth of US prices while serving a majority of US firms' token volume. China runs ~46% of the world's AI users on ~1.2% of global AI revenue; national token consumption went from ~0.1T/day in early 2024 to ~140T/day by March 2026",
+    "China bloc — utilization: reported national average AI compute utilization ~37% with >60% idle across some state clusters, against >65% at the tier-1 hyperscalers and Alibaba's \"not a single card is idle\" — Chinese coverage describes it as shortage and idleness coexisting. No official figure is published; all are media-attributed",
   ];
 
   return { groups, GROUP_COLORS, blocs, defaults: blocs.us.defaults, sliders: blocs.us.sliders,

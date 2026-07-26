@@ -5,8 +5,10 @@ who pays whom, how much of it is real customer revenue vs venture capital, debt
 and circular vendor financing, and what the buildout would have to earn to pay
 for itself. Drag the assumptions; the ecosystem re-computes and projects to 2031.
 
-**Open `index.html` in a browser. No build, no server, no dependencies.**
-A single-file bundle lives in `dist/index.html` if you want one file to share.
+**Live at https://bubble.arkiv-globe.net** — or open `index.html` in a browser.
+No build, no server, no dependencies. A single-file bundle lives in
+`dist/index.html` if you want one file to share; `./deploy.sh` rebuilds, tests
+and publishes it to the server's nginx webroot.
 
 ## What's in it
 

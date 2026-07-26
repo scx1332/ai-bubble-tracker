@@ -1124,7 +1124,7 @@ window.DATA = (function () {
         { id: "demandFade", label: "Growth fade per year", unit: "pp", min: 0, max: 40, step: 1 },
       ]},
       { group: "Buildout", color: "var(--c-capex)", items: [
-        { id: "capex26", label: "AI capex 2026", unit: "$B", min: 20, max: 500, step: 10, hint: "$70B in 2025; the drafted national compute plan would add far more" },
+        { id: "capex26", label: "AI capex 2026", unit: "$B", min: 20, max: 500, step: 5, hint: "bank estimates for 2026 span $69B to $102B" },
         { id: "capexGrowth", label: "Capex growth 2027", unit: "%", min: -50, max: 100, step: 5 },
         { id: "capexFade", label: "Capex growth fade", unit: "pp", min: 0, max: 50, step: 1 },
         { id: "gpuShare", label: "Chips & servers share", unit: "%", min: 30, max: 80, step: 5 },
@@ -1133,7 +1133,7 @@ window.DATA = (function () {
         { id: "importShare", label: "Imported silicon share", unit: "%", min: 0, max: 70, step: 5, hint: "The one edge where this bloc's money leaves for the other" },
       ]},
       { group: "Funding", color: "var(--c-debt)", items: [
-        { id: "vc26", label: "State funds & VC 2026", unit: "$B", min: 0, max: 300, step: 5, hint: "Big Fund tranches, national and provincial AI funds, plus venture" },
+        { id: "vc26", label: "State funds & VC 2026", unit: "$B", min: 0, max: 300, step: 5, hint: "money actually deployed, not announced — headline programs run ~10× larger" },
         { id: "vcGrowth", label: "Funding growth", unit: "%/yr", min: -60, max: 60, step: 5 },
         { id: "debt26", label: "Debt & govt bonds 2026", unit: "$B", min: 0, max: 300, step: 5 },
         { id: "debtGrowth", label: "Debt growth", unit: "%/yr", min: -60, max: 60, step: 5 },

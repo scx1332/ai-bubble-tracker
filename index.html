@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Bubble Simulator</title>
+<meta name="description" content="An interactive model of money flowing through the AI ecosystem — revenues, capex, buybacks, funding — with adjustable assumptions and projections to 2031.">
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="eyebrow">interactive model · figures in $B unless noted</div>
+    <h1>AI&nbsp;Bubble Simulator</h1>
+    <p class="tagline">Money in, money out, and the revenue the buildout has to earn. Drag the assumptions; the ecosystem re-computes.</p>
+  </div>
+  <div class="header-actions">
+    <div class="seg" id="scenarios" role="group" aria-label="Scenario presets"></div>
+    <button id="themeToggle" class="ghost-btn" type="button" aria-label="Toggle color theme">◐ theme</button>
+  </div>
+</header>
+
+<section class="verdict" aria-live="polite">
+  <div class="bubble-wrap" aria-hidden="true">
+    <svg id="bubbleGauge" viewBox="0 0 240 240" width="150" height="150" role="img" aria-label="Bubble gauge"></svg>
+    <div class="bubble-caption" id="bubbleCaption"></div>
+  </div>
+  <div class="verdict-text">
+    <div class="eyebrow">the verdict at current assumptions</div>
+    <h2 id="verdictHeadline">—</h2>
+    <p id="verdictDetail">—</p>
+  </div>
+</section>
+
+<main class="layout">
+  <aside class="controls" id="controls" aria-label="Model assumptions">
+    <div class="controls-head">
+      <span class="eyebrow">assumptions</span>
+      <button id="resetBtn" class="ghost-btn" type="button">reset</button>
+    </div>
+    <div id="controlGroups"></div>
+    <p class="controls-note">Defaults are prefilled from public filings and reporting (see <a href="#methodology">methodology</a>). Every number here is an estimate — that's the point of the sliders.</p>
+  </aside>
+
+  <div class="stage">
+    <section class="card" id="flowCard">
+      <div class="card-head">
+        <div>
+          <div class="eyebrow">money flow map</div>
+          <h2>Where a dollar goes in <output id="yearOut">2026</output></h2>
+        </div>
+        <div class="year-scrub">
+          <span class="scrub-label" id="scrubMin">2024</span>
+          <input type="range" id="yearScrub" min="2024" max="2031" step="1" value="2026" aria-label="Selected year">
+          <span class="scrub-label" id="scrubMax">2031</span>
+        </div>
+      </div>
+      <div class="sankey-wrap">
+        <svg id="sankey" role="img" aria-label="Sankey diagram of money flows in the AI ecosystem for the selected year"></svg>
+        <div class="viz-tip" id="sankeyTip" role="status" hidden></div>
+      </div>
+      <div class="flow-legend" id="flowLegend"></div>
+      <details class="table-twin">
+        <summary>View as table</summary>
+        <div id="sankeyTable"></div>
+      </details>
+    </section>
+
+    <section class="tiles" id="tiles" aria-label="Key figures for the selected year"></section>
+
+    <div class="chart-grid">
+      <section class="card chart-card" id="gapCard"></section>
+      <section class="card chart-card" id="capexCard"></section>
+      <section class="card chart-card" id="inoutCard"></section>
+      <section class="card chart-card" id="capacityCard"></section>
+    </div>
+  </div>
+</main>
+
+<section class="companies" id="companiesSection">
+  <div class="section-head">
+    <div class="eyebrow">the cast</div>
+    <h2>Who's in the ecosystem</h2>
+    <p>Latest publicly reported or estimated figures, grouped by role. Small players are folded into virtual groups. These actuals seed the model's defaults.</p>
+  </div>
+  <div id="companiesRoot"></div>
+</section>
+
+<section class="method" id="methodology">
+  <div class="section-head">
+    <div class="eyebrow">methodology</div>
+    <h2>How the model works</h2>
+  </div>
+  <div id="methodRoot"></div>
+</section>
+
+<footer class="foot">
+  <p id="footNote"></p>
+</footer>
+
+<script src="src/data.js"></script>
+<script src="src/model.js"></script>
+<script src="src/sankey.js"></script>
+<script src="src/charts.js"></script>
+<script src="src/ui.js"></script>
+</body>
+</html>

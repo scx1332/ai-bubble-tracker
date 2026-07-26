@@ -1,0 +1,2174 @@
+<title>AI Bubble Simulator</title>
+<style>
+/* ============================================================
+   AI Bubble Simulator — design tokens & layout
+   Palette: validated dataviz reference instance (light + dark).
+   Type: monospace display over system sans body.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+  --plane: #f9f9f7;          /* page background */
+  --surface: #fcfcfb;        /* cards / chart surface */
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+
+  /* categorical slots, fixed semantic mapping */
+  --c-demand: #2a78d6;       /* slot 1 blue — end-customer demand / revenue */
+  --c-capex: #eb6834;        /* slot 2 orange — capex / hardware */
+  --c-returns: #1baf7a;      /* slot 3 aqua — investor returns (buybacks+divs) */
+  --c-debt: #eda100;         /* slot 4 yellow — debt & external funding */
+  --c-vc: #e87ba4;           /* slot 5 magenta — VC / AI labs & startups */
+  --c-compute: #4a3aa7;      /* slot 7 violet — clouds / compute layer */
+  --c-circular: #e34948;     /* slot 8 red — circular vendor financing */
+  --c-leak: #898781;         /* muted — leakage to wider economy */
+
+  --status-critical: #d03b3b;
+  --status-good: #0ca30c;
+  --delta-good-text: #006300;
+
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  --radius: 10px;
+  --gap: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --plane: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --c-demand: #3987e5;
+    --c-capex: #d95926;
+    --c-returns: #199e70;
+    --c-debt: #c98500;
+    --c-vc: #d55181;
+    --c-compute: #9085e9;
+    --c-circular: #e66767;
+    --status-critical: #d03b3b;
+    --delta-good-text: #0ca30c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --c-demand: #3987e5;
+  --c-capex: #d95926;
+  --c-returns: #199e70;
+  --c-debt: #c98500;
+  --c-vc: #d55181;
+  --c-compute: #9085e9;
+  --c-circular: #e66767;
+  --status-critical: #d03b3b;
+  --delta-good-text: #0ca30c;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+body {
+  margin: 0;
+  background: var(--plane);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration-color: var(--muted); text-underline-offset: 2px; }
+a:hover { text-decoration-color: var(--ink); }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+
+/* ---------- header ---------- */
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--gap);
+  flex-wrap: wrap;
+  padding: 34px clamp(16px, 4vw, 48px) 10px;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+.top h1 {
+  font-family: var(--font-mono);
+  font-size: clamp(30px, 4.6vw, 52px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  margin: 6px 0 8px;
+}
+.tagline { margin: 0; color: var(--ink-2); max-width: 60ch; }
+
+.header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 7px 12px;
+  background: transparent;
+  color: var(--ink-2);
+  border: 0;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--plane); }
+.seg button:hover:not([aria-pressed="true"]) { color: var(--ink); }
+
+.ghost-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.ghost-btn:hover { color: var(--ink); }
+
+button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--c-demand);
+  outline-offset: 2px;
+}
+
+/* ---------- verdict strip ---------- */
+
+.verdict {
+  display: flex;
+  gap: clamp(16px, 3vw, 40px);
+  align-items: center;
+  max-width: 1480px;
+  margin: 14px auto 8px;
+  padding: 18px clamp(16px, 4vw, 48px);
+}
+.bubble-wrap { flex: 0 0 auto; text-align: center; }
+.bubble-caption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.verdict-text h2 { font-size: clamp(19px, 2.4vw, 27px); margin: 6px 0 8px; max-width: 34ch; }
+.verdict-text p { margin: 0; color: var(--ink-2); max-width: 78ch; }
+.verdict-text .pop-red { color: var(--status-critical); font-weight: 650; }
+.verdict-text .ok-green { color: var(--delta-good-text); font-weight: 650; }
+
+@keyframes bubbleFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+#bubbleGauge { overflow: visible; animation: bubbleFloat 7s ease-in-out infinite; }
+
+/* ---------- layout ---------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: var(--gap);
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 10px clamp(16px, 4vw, 48px) 40px;
+  align-items: start;
+}
+
+.controls {
+  position: sticky;
+  top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+}
+.controls-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.controls-note { font-size: 12.5px; color: var(--muted); margin: 14px 2px 2px; }
+
+.ctl-group { border-top: 1px solid var(--grid); padding: 12px 0 6px; margin-top: 8px; }
+.ctl-group > .eyebrow { display: flex; align-items: center; gap: 8px; }
+.ctl-group > .eyebrow .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.ctl { margin: 12px 0 2px; }
+.ctl-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+.ctl-label-row label { color: var(--ink-2); }
+.ctl-val {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 1px 5px;
+  width: 84px;
+  text-align: right;
+}
+.ctl-val:hover, .ctl-val:focus { border-color: var(--border); background: var(--plane); }
+.ctl input[type="range"] {
+  width: 100%;
+  margin: 6px 0 0;
+  accent-color: var(--c-demand);
+  height: 22px;
+}
+.ctl-hint { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+/* ---------- cards & stage ---------- */
+
+.stage { display: grid; gap: var(--gap); min-width: 0; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 18px 14px;
+  min-width: 0;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.card-head h2, .card-head h3 { font-size: 17px; margin-top: 3px; }
+.card-sub { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
+
+.year-scrub { display: flex; align-items: center; gap: 8px; min-width: 240px; flex: 0 1 300px; }
+.year-scrub input { flex: 1; accent-color: var(--c-demand); }
+.scrub-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+#yearOut { font-family: var(--font-mono); }
+
+/* sankey */
+.sankey-wrap { position: relative; overflow-x: auto; }
+#sankey { width: 100%; min-width: 740px; height: auto; display: block; }
+
+.viz-tip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+  padding: 8px 10px;
+  font-size: 12.5px;
+  max-width: 280px;
+  z-index: 5;
+}
+.viz-tip .tip-title { font-weight: 650; margin-bottom: 2px; }
+.viz-tip .tip-val { font-family: var(--font-mono); }
+.viz-tip .tip-note { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+
+.flow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.flow-legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.flow-legend .key .swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+.table-twin { margin-top: 10px; }
+.table-twin > div { overflow-x: auto; }
+.table-twin summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.table-twin summary:hover { color: var(--ink); }
+
+/* tiles */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--gap);
+}
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 15px 11px;
+}
+.tile .t-label { font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.tile .t-label .swatch { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto; }
+.tile .t-value { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; margin-top: 2px; }
+.tile .t-delta { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+.tile .t-delta.up-good { color: var(--delta-good-text); }
+.tile .t-delta.up-bad { color: var(--status-critical); }
+
+/* chart grid */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(430px, 100%), 1fr));
+  gap: var(--gap);
+}
+.chart-card svg { width: 100%; min-width: 460px; height: auto; display: block; }
+.chart-card .chart-body { position: relative; overflow-x: auto; }
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0 2px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.chart-legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend .key .swatch { width: 10px; height: 10px; border-radius: 3px; }
+.chart-legend .key .line-key { width: 14px; height: 2px; border-radius: 1px; }
+
+/* data tables */
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin-top: 8px;
+}
+table.data caption { text-align: left; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+table.data th, table.data td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--grid); }
+table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data thead th { color: var(--muted); font-weight: 500; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+table.data td { font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+table.data td:first-child { font-family: var(--font-sans); font-size: 12.5px; color: var(--ink); }
+
+/* ---------- companies ---------- */
+
+.companies, .method {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 26px clamp(16px, 4vw, 48px);
+}
+.section-head { max-width: 78ch; margin-bottom: 14px; }
+.section-head h2 { font-size: 22px; margin: 6px 0 8px; }
+.section-head p { color: var(--ink-2); margin: 0; }
+
+.company-group { margin-bottom: 26px; }
+.company-group .cg-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.company-group .cg-head h3 { font-size: 15.5px; display: inline-flex; align-items: center; gap: 8px; }
+.company-group .cg-head h3 .swatch { width: 11px; height: 11px; border-radius: 3px; }
+.company-group .cg-head .cg-note { font-size: 12.5px; color: var(--muted); }
+.company-group .table-scroll { overflow-x: auto; }
+.company-group table.data { min-width: 760px; }
+.src-tag { font-size: 10.5px; color: var(--muted); font-family: var(--font-mono); }
+
+/* ---------- methodology ---------- */
+
+.method-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+  gap: var(--gap);
+}
+.method-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.method-block h3 { font-size: 14px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+.method-block p, .method-block li { font-size: 13.5px; color: var(--ink-2); }
+.method-block ul { margin: 6px 0; padding-left: 18px; }
+.method-block code { font-family: var(--font-mono); font-size: 12px; background: var(--plane); border: 1px solid var(--grid); border-radius: 4px; padding: 0 4px; }
+
+.sources-list { columns: 2; column-gap: 28px; font-size: 12.5px; color: var(--muted); padding-left: 18px; margin: 6px 0; }
+.sources-list li { break-inside: avoid; margin-bottom: 3px; }
+@media (max-width: 700px) { .sources-list { columns: 1; } }
+
+.foot {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 10px clamp(16px, 4vw, 48px) 46px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* ---------- svg chart chrome (shared) ---------- */
+
+.axis-text { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); }
+.grid-line { stroke: var(--grid); stroke-width: 1; }
+.axis-line { stroke: var(--axis); stroke-width: 1; }
+.direct-label { font-family: var(--font-sans); font-size: 11px; fill: var(--ink-2); font-weight: 600; }
+.node-label { font-family: var(--font-sans); font-size: 11.5px; fill: var(--ink); font-weight: 600; }
+.node-value { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink-2); }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1020px) {
+  .layout { grid-template-columns: 1fr; }
+  .controls { position: static; max-height: none; order: 2; }
+  .stage { order: 1; }
+  .verdict { flex-direction: row; }
+}
+@media (max-width: 640px) {
+  .verdict { flex-direction: column; align-items: flex-start; }
+  .top { padding-top: 24px; }
+}
+
+@media print {
+  /* force light tokens so a toggled dark theme can't print white-on-white */
+  :root, :root[data-theme="dark"] {
+    --plane: #ffffff;
+    --surface: #ffffff;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --c-demand: #2a78d6;
+    --c-capex: #eb6834;
+    --c-returns: #1baf7a;
+    --c-debt: #eda100;
+    --c-vc: #e87ba4;
+    --c-compute: #4a3aa7;
+    --c-circular: #e34948;
+    --delta-good-text: #006300;
+  }
+  .controls, .header-actions { display: none; }
+  .layout { grid-template-columns: 1fr; }
+}
+
+</style>
+
+
+<header class="top">
+  <div class="brand">
+    <div class="eyebrow">interactive model · figures in $B unless noted</div>
+    <h1>AI&nbsp;Bubble Simulator</h1>
+    <p class="tagline">Money in, money out, and the revenue the buildout has to earn. Drag the assumptions; the ecosystem re-computes.</p>
+  </div>
+  <div class="header-actions">
+    <div class="seg" id="scenarios" role="group" aria-label="Scenario presets"></div>
+    <button id="themeToggle" class="ghost-btn" type="button" aria-label="Toggle color theme">◐ theme</button>
+  </div>
+</header>
+
+<section class="verdict" aria-live="polite">
+  <div class="bubble-wrap" aria-hidden="true">
+    <svg id="bubbleGauge" viewBox="0 0 240 240" width="150" height="150" role="img" aria-label="Bubble gauge"></svg>
+    <div class="bubble-caption" id="bubbleCaption"></div>
+  </div>
+  <div class="verdict-text">
+    <div class="eyebrow">the verdict at current assumptions</div>
+    <h2 id="verdictHeadline">—</h2>
+    <p id="verdictDetail">—</p>
+  </div>
+</section>
+
+<main class="layout">
+  <aside class="controls" id="controls" aria-label="Model assumptions">
+    <div class="controls-head">
+      <span class="eyebrow">assumptions</span>
+      <button id="resetBtn" class="ghost-btn" type="button">reset</button>
+    </div>
+    <div id="controlGroups"></div>
+    <p class="controls-note">Defaults are prefilled from public filings and reporting (see <a href="#methodology">methodology</a>). Every number here is an estimate — that's the point of the sliders.</p>
+  </aside>
+
+  <div class="stage">
+    <section class="card" id="flowCard">
+      <div class="card-head">
+        <div>
+          <div class="eyebrow">money flow map</div>
+          <h2>Where a dollar goes in <output id="yearOut">2026</output></h2>
+        </div>
+        <div class="year-scrub">
+          <span class="scrub-label" id="scrubMin">2024</span>
+          <input type="range" id="yearScrub" min="2024" max="2031" step="1" value="2026" aria-label="Selected year">
+          <span class="scrub-label" id="scrubMax">2031</span>
+        </div>
+      </div>
+      <div class="sankey-wrap">
+        <svg id="sankey" role="img" aria-label="Sankey diagram of money flows in the AI ecosystem for the selected year"></svg>
+        <div class="viz-tip" id="sankeyTip" role="status" hidden></div>
+      </div>
+      <div class="flow-legend" id="flowLegend"></div>
+      <details class="table-twin">
+        <summary>View as table</summary>
+        <div id="sankeyTable"></div>
+      </details>
+    </section>
+
+    <section class="tiles" id="tiles" aria-label="Key figures for the selected year"></section>
+
+    <div class="chart-grid">
+      <section class="card chart-card" id="gapCard"></section>
+      <section class="card chart-card" id="capexCard"></section>
+      <section class="card chart-card" id="inoutCard"></section>
+      <section class="card chart-card" id="capacityCard"></section>
+    </div>
+  </div>
+</main>
+
+<section class="companies" id="companiesSection">
+  <div class="section-head">
+    <div class="eyebrow">the cast</div>
+    <h2>Who's in the ecosystem</h2>
+    <p>Latest publicly reported or estimated figures, grouped by role. Small players are folded into virtual groups. These actuals seed the model's defaults.</p>
+  </div>
+  <div id="companiesRoot"></div>
+</section>
+
+<section class="method" id="methodology">
+  <div class="section-head">
+    <div class="eyebrow">methodology</div>
+    <h2>How the model works</h2>
+  </div>
+  <div id="methodRoot"></div>
+</section>
+
+<footer class="foot">
+  <p id="footNote"></p>
+</footer>
+
+<script>
+/* ============================================================
+   AI Bubble Simulator — dataset (compiled late July 2026)
+   All money figures in billions of USD unless noted.
+   "period" tells you what window each figure covers.
+   Sources: company filings & earnings calls, Dell'Oro, Gartner,
+   Crunchbase/PitchBook, Morgan Stanley, JPMorgan, McKinsey,
+   Bain, Goldman Sachs, press reporting on private companies.
+   Everything about private companies is an estimate.
+   ============================================================ */
+
+window.DATA = (function () {
+
+  const GROUP_COLORS = {
+    hyperscalers: "var(--c-compute)",
+    chips: "var(--c-capex)",
+    fabs: "var(--c-capex)",
+    labs: "var(--c-vc)",
+    neoclouds: "var(--c-compute)",
+    startups: "var(--c-vc)",
+    power: "var(--c-leak)",
+  };
+
+  // Column sets differ by group: public companies report earnings,
+  // private ones leak run-rates and funding rounds.
+  const COLS_PUBLIC = [
+    ["revenue", "Revenue"], ["netIncome", "Net income"], ["capex", "Capex"],
+    ["capexGuide", "Capex guide ’26/27"], ["shareholder", "Buybacks + divs"], ["aiRev", "AI / cloud rev"],
+  ];
+  const COLS_PRIVATE = [
+    ["runRate", "Rev run-rate"], ["revenue", "2025 revenue"], ["netIncome", "Est. profit/loss"],
+    ["funding", "Raised to date"], ["valuation", "Valuation"], ["computeSpend", "Compute spend/yr"],
+  ];
+  const COLS_NEO = [
+    ["runRate", "Rev run-rate"], ["netIncome", "Net income"], ["capexGuide", "2026 capex"],
+    ["debt", "Debt raised"], ["backlog", "Contracted backlog"], ["valuation", "Valuation"],
+  ];
+
+  const groups = [
+    {
+      id: "hyperscalers", name: "Hyperscalers", cols: COLS_PUBLIC,
+      note: "Rent AI compute and fund most of the buildout — increasingly with debt and cut buybacks. 2026 capex guides total ~$800B.",
+      companies: [
+        { name: "Microsoft", period: "TTM Mar 2026", revenue: 318.3, netIncome: 125.2, capex: 135, capexGuide: 190, shareholder: 42.5, aiRev: 37, tag: "AI run-rate $37B; RPO $627B incl. OpenAI" },
+        { name: "Alphabet", period: "FY2025 + TTM", revenue: 445.9, netIncome: 132.2, capex: 132.4, capexGuide: 200, shareholder: 55.7, aiRev: 58.7, tag: "buybacks halted 2026; raised $49.6B equity + $74B debt for capex" },
+        { name: "Amazon", period: "TTM Mar 2026", revenue: 742.7, netIncome: 90.9, capex: 150, capexGuide: 200, shareholder: 0, aiRev: 128.7, tag: "AWS FY25; AI run-rate >$15B; TTM FCF ~$1B" },
+        { name: "Meta", period: "TTM Mar 2026", revenue: 215, netIncome: 70.6, capex: 78.4, capexGuide: 135, shareholder: 31.6, aiRev: null, tag: "$55B bonds + $27B SPV debt; no AI segment disclosed" },
+        { name: "Oracle", period: "FY2026 (May)", revenue: 67.4, netIncome: 17.0, capex: 55.7, capexGuide: 92.5, shareholder: 5.9, aiRev: 18.1, tag: "RPO $638B (OpenAI $300B); FCF −$23.7B" },
+      ],
+    },
+    {
+      id: "chips", name: "Chip designers & AI hardware", cols: COLS_PUBLIC,
+      note: "Where most capex lands, at extraordinary margins. NVIDIA alone: ~$330B run-rate, and >$40B invested back into its own customers in 2026.",
+      companies: [
+        { name: "NVIDIA", period: "FY2026 (Jan)", revenue: 215.9, netIncome: 120, capex: 5, capexGuide: null, shareholder: 41.1, aiRev: 193.7, tag: "Q1 FY27 run-rate ~$326B; $119B supply commitments; $42B equity into AI labs/neoclouds" },
+        { name: "AMD", period: "Q1 2026 ann.", revenue: 41, netIncome: 5.6, capex: 1.5, capexGuide: null, shareholder: 0.9, aiRev: 23.2, tag: "OpenAI 6 GW deal + warrant for ~10% of AMD" },
+        { name: "Broadcom", period: "Q2 FY26 ann.", revenue: 88.8, netIncome: 37.2, capex: 1, capexGuide: null, shareholder: 15.5, aiRev: 56, tag: "FY26 AI rev guide ~$56B; >$100B line of sight FY27" },
+        { name: "Dell + Supermicro", period: "FY2026", revenue: 153.5, netIncome: 8, capex: 3, capexGuide: null, shareholder: 6, aiRev: 65, tag: "AI servers: thin margins, $51B Dell backlog" },
+      ],
+    },
+    {
+      id: "fabs", name: "Fabs & memory", cols: COLS_PUBLIC,
+      note: "The chokepoint. Memory margins (85% on commodity DRAM) are the clearest mean-reversion risk in the whole stack.",
+      companies: [
+        { name: "TSMC", period: "CY2026E", revenue: 172, netIncome: 75, capex: 62, capexGuide: 62, shareholder: 15, aiRev: 106, tag: "HPC ~2/3 of revenue; record 67.7% gross margin" },
+        { name: "SK Hynix", period: "Q1 2026 ann.", revenue: 144, netIncome: 110, capex: 20, capexGuide: null, shareholder: 1.5, aiRev: 84, tag: "~58% HBM share; 72–77% operating margin" },
+        { name: "Micron", period: "FQ3 2026 ann.", revenue: 166, netIncome: 113, capex: 27, capexGuide: 27, shareholder: 1, aiRev: 90, tag: "quarterly revenue 4.5× YoY; 85% gross margin" },
+      ],
+    },
+    {
+      id: "labs", name: "AI labs", cols: COLS_PRIVATE,
+      note: "Frontier model builders. Revenue is exploding but every dollar of it costs more than a dollar to serve — the gap is filled by VC and vendors.",
+      companies: [
+        { name: "OpenAI", period: "mid-2026", runRate: 29, revenue: 13, netIncome: -14, funding: 180, valuation: 852, computeSpend: 50, tag: "~$600B compute committed through 2030 (reset from $1.4T); S-1 filed" },
+        { name: "Anthropic", period: "mid-2026", runRate: 47, revenue: 10, netIncome: -6, funding: 128, valuation: 965, computeSpend: 20, tag: "claimed run-rate, unaudited; ~$275B compute commitments; S-1 submitted" },
+        { name: "xAI (SpaceX)", period: "mid-2026", runRate: 26.5, revenue: 0.5, netIncome: -10, funding: 42, valuation: 250, computeSpend: 12, tag: "now mostly a compute seller: Anthropic $15B/yr + Google $11B/yr rent Colossus" },
+        { name: "Mistral, SSI, Thinking Machines, Cohere", period: "mid-2026", runRate: 1.2, revenue: 0.7, netIncome: -3, funding: 12, valuation: 71, computeSpend: 3, tag: "second tier: 40–50× ARR valuations; Thinking Machines' $50B round collapsed" },
+      ],
+    },
+    {
+      id: "neoclouds", name: "Neoclouds", cols: COLS_NEO,
+      note: "GPU landlords. Loss-making at 100–700% growth, capex at multiples of revenue, financed by GPU-backed debt with an NVIDIA backstop.",
+      companies: [
+        { name: "CoreWeave", period: "Q1 2026", runRate: 8.3, netIncome: -3.0, capexGuide: 33, debt: 21, backlog: 99.4, valuation: 60, tag: "Q1 loss annualized; backlog 4×’d in a year; Meta $35B, OpenAI $22B contracts" },
+        { name: "Nebius", period: "Q1 2026", runRate: 1.9, netIncome: -0.4, capexGuide: 22.5, debt: 6.1, backlog: 50, valuation: 25, tag: "Microsoft $17.4B + Meta $27B deals; >4 GW contracted power" },
+        { name: "Lambda, Crusoe, Together AI", period: "mid-2026 est", runRate: 4, netIncome: -0.8, capexGuide: 15, debt: 11, backlog: 20, valuation: 47, tag: "IPO queue forming; Crusoe builds Stargate Abilene" },
+      ],
+    },
+    {
+      id: "startups", name: "AI startups (virtual group)", cols: COLS_PRIVATE,
+      note: "The application layer minus the big labs: coding agents, search, legal, voice, robotics. Only ~$10B of the top-34's $80B run-rate is not OpenAI/Anthropic.",
+      companies: [
+        { name: "Cursor, Perplexity, Cognition, Harvey, Glean, ElevenLabs, Figure + long tail", period: "mid-2026 est", runRate: 12, revenue: 6, netIncome: -25, funding: 300, valuation: 700, computeSpend: 10, tag: "aggregate estimates; VC-funded burn" },
+      ],
+    },
+    {
+      id: "power", name: "Power & datacenter builders", cols: COLS_PUBLIC,
+      note: "Where the non-chip 40% of capex lands: shells, cooling, turbines, grid. Order books say the buildout is still accelerating.",
+      companies: [
+        { name: "Equinix + Digital Realty", period: "FY2026E", revenue: 17.1, netIncome: 2.8, capex: 7.9, capexGuide: 8, shareholder: 5, aiRev: null, tag: "1.2 GW under construction at DLR; $23B xScale program" },
+        { name: "Vertiv", period: "FY2026E", revenue: 13.75, netIncome: 1.8, capex: 0.5, capexGuide: null, shareholder: 0.5, aiRev: null, tag: "orders +252% YoY; $15B backlog" },
+        { name: "GE Vernova", period: "FY2026E", revenue: 46, netIncome: 3, capex: 1, capexGuide: null, shareholder: 1, aiRev: null, tag: "$176B backlog; 116 GW of gas turbines contracted" },
+      ],
+    },
+  ];
+
+  // ---- historical anchor points for the model (ecosystem-wide, $B) ----
+  // aiCapex: AI-driven datacenter capex (chips + shells + power), all payers.
+  //   Global ALL-datacenter capex was $455B (2024) and ~$715B (2025) per
+  //   Dell'Oro; the AI-driven share below is our estimate of that.
+  // endRev: end-customer AI revenue — what consumers + enterprises actually
+  //   paid for AI products (subs, API, AI cloud, AI apps). NOT Gartner's
+  //   $1.8T "AI spending" (that counts the hardware itself).
+  const history = {
+    2024: { aiCapex: 250, endRev: 25, vc: 114, debt: 25, returns: 200, gwAdded: 5 },
+    2025: { aiCapex: 480, endRev: 60, vc: 202, debt: 100, returns: 230, gwAdded: 10 },
+  };
+
+  // ---- model defaults (the sliders), calibrated to mid-2026 reporting ----
+  const defaults = {
+    // demand
+    endRev26: 150,        // Gartner: $64B models+platforms + Menlo enterprise + app layer + consumer
+    demandGrowth: 70,     // % growth in 2027 (top-34 run-rate +112% in 6mo of 2026)
+    demandFade: 15,       // pp less growth each later year
+    // buildout
+    capex26: 850,         // big-5 guides ~$800B + neoclouds ~$70B + labs' own
+    capexGrowth: 20,      // % growth 2027 (street consensus still rising)
+    capexFade: 8,         // pp less growth each later year (can go negative)
+    gpuShare: 60,         // % of capex on chips/servers/networking (MS: ~60% to hardware)
+    costPerGw: 50,        // $B all-in per GW of AI datacenter
+    deprYears: 5,         // hyperscalers use 5–6; Burry/Kupperman argue 2–3
+    // funding
+    vc26: 400,            // financial VC into AI. H1 2026 gross was ~$400B but that
+                          // included the strategic checks counted under vendor26
+                          // (NVIDIA/Amazon/Google/MSFT money inside the mega-rounds);
+                          // 400 as a full-year financial-only figure assumes H2 cools.
+    vcGrowth: -10,        // %/yr — mega-round pace assumed to cool
+    debt26: 220,          // AI-linked bonds + SPVs + GPU-backed loans, 2026 run-rate
+    debtGrowth: 10,       // %/yr
+    vendor26: 110,        // circular strategic financing: NVIDIA $42B + Amazon $50B + Google $10B + MSFT $5B into labs
+    // economics
+    chipMargin: 50,       // blended hardware-layer operating margin (NVIDIA ~55 net, memory ~75, OEMs ~5)
+    cloudMargin: 25,      // compute-layer operating margin on AI revenue
+    hurdle: 10,           // required pre-tax return on net AI PP&E, %
+    payout: 40,           // % of ecosystem profits returned to shareholders (buybacks being cut)
+    opexPerGw: 2.0,       // $B per GW-year to run (power, staff, network)
+  };
+
+  const sliders = [
+    { group: "Demand", color: "var(--c-demand)", items: [
+      { id: "endRev26", label: "AI end-revenue 2026", unit: "$B", min: 40, max: 500, step: 10, hint: "What customers actually pay for AI this year" },
+      { id: "demandGrowth", label: "Revenue growth 2027", unit: "%", min: -20, max: 150, step: 5 },
+      { id: "demandFade", label: "Growth fade per year", unit: "pp", min: 0, max: 40, step: 1, hint: "How fast hypergrowth cools" },
+    ]},
+    { group: "Buildout", color: "var(--c-capex)", items: [
+      { id: "capex26", label: "AI capex 2026", unit: "$B", min: 200, max: 1500, step: 25 },
+      { id: "capexGrowth", label: "Capex growth 2027", unit: "%", min: -50, max: 100, step: 5 },
+      { id: "capexFade", label: "Capex growth fade", unit: "pp", min: 0, max: 50, step: 1, hint: "Set high to make capex peak and roll over" },
+      { id: "gpuShare", label: "Chips & servers share", unit: "%", min: 30, max: 80, step: 5, hint: "Rest goes to shells, cooling, power" },
+      { id: "costPerGw", label: "Cost per GW", unit: "$B", min: 20, max: 80, step: 5 },
+      { id: "deprYears", label: "Depreciation life", unit: "yr", min: 2, max: 8, step: 1, hint: "Hyperscalers say 5–6, critics say 2–3" },
+    ]},
+    { group: "Funding", color: "var(--c-debt)", items: [
+      { id: "vc26", label: "VC into AI 2026", unit: "$B", min: 0, max: 800, step: 10, hint: "H1 2026 gross was ~$400B incl. strategic money" },
+      { id: "vcGrowth", label: "VC growth", unit: "%/yr", min: -60, max: 60, step: 5 },
+      { id: "debt26", label: "Debt financing 2026", unit: "$B", min: 0, max: 600, step: 10 },
+      { id: "debtGrowth", label: "Debt growth", unit: "%/yr", min: -60, max: 60, step: 5 },
+      { id: "vendor26", label: "Circular financing", unit: "$B/yr", min: 0, max: 300, step: 5, hint: "Chip makers & clouds investing in their own customers" },
+    ]},
+    { group: "Economics", color: "var(--c-returns)", items: [
+      { id: "chipMargin", label: "Hardware margin", unit: "%", min: 20, max: 65, step: 5 },
+      { id: "cloudMargin", label: "Compute margin", unit: "%", min: 0, max: 50, step: 5 },
+      { id: "hurdle", label: "Required return", unit: "%", min: 0, max: 25, step: 1, hint: "Pre-tax return investors demand on the fleet" },
+      { id: "payout", label: "Payout ratio", unit: "%", min: 0, max: 100, step: 5, hint: "Share of profits going to buybacks + dividends" },
+      { id: "opexPerGw", label: "Opex per GW-year", unit: "$B", min: 0.5, max: 5, step: 0.25 },
+    ]},
+  ];
+
+  // ---- scenario presets ----
+  const scenarios = {
+    base: { label: "Base", overrides: {} },
+    boom: {
+      label: "AI delivers",
+      overrides: { endRev26: 190, demandGrowth: 100, demandFade: 12, capexGrowth: 30, capexFade: 8, deprYears: 6, vc26: 450, vcGrowth: 5, debtGrowth: 15 },
+    },
+    pop: {
+      label: "The pop",
+      overrides: { endRev26: 110, demandGrowth: 40, demandFade: 18, capexGrowth: 0, capexFade: 30, deprYears: 3, vc26: 350, vcGrowth: -45, debtGrowth: -30, vendor26: 150, payout: 25 },
+    },
+    soft: {
+      label: "Soft landing",
+      overrides: { endRev26: 150, demandGrowth: 55, demandFade: 8, capexGrowth: 5, capexFade: 6, deprYears: 5, vcGrowth: -20, debtGrowth: -5 },
+    },
+  };
+
+  // ---- internal split assumptions (documented in methodology) ----
+  const splits = {
+    endRevToLabs: 0.40,       // share of end revenue billed by labs (ChatGPT, Claude, API…)
+    endRevToClouds: 0.42,     // share billed as AI cloud by hyperscalers/neoclouds
+    endRevToStartups: 0.18,   // share billed by application startups
+    vcToLabs: 0.70,           // share of VC going to labs (OpenAI+Anthropic = 43% of ALL VC in H1 2026)
+    labComputeRatio: 1.15,    // 2026: labs' compute spend per $1 of revenue (glides to matureLabCompute)
+    matureLabCompute: 0.55,   // ...by 2032, if scale economics work
+    labOtherRatio: 0.55,      // 2026: salaries & everything else per $1 of lab revenue
+    matureLabOther: 0.32,     // ...by 2032
+    startupApiShare: 0.35,    // startups' model-API bill as share of their revenue
+    neocloudShare: 0.18,      // share of AI compute rented from neoclouds
+    hyperscalerCapexShare: 0.80, // share of ecosystem capex spent by hyperscalers
+    fabsShare: 0.35,          // chip revenue passed through to fabs+memory (COGS)
+    nonInfraCostFactor: 1.20, // end revenue must also cover the model/app layer above infra
+  };
+
+  const meta = {
+    updated: "July 26, 2026",
+    horizon: [2024, 2031],
+    presentYear: 2026,
+  };
+
+  // ---- headline aggregates used around the page ----
+  const aggregates = {
+    contractedBacklog: 1930,  // MSFT RPO $627B + Oracle $638B + Google Cloud $514B + CoreWeave $99B + Nebius $50B
+    dcCapex2025: 715,         // Dell'Oro, all datacenter capex CY2025 (+57% YoY)
+    dcCapex2026F: 1000,       // Dell'Oro forecast CY2026
+    aiVcH1_2026: 400,         // Crunchbase: ~80% of a record $510B global VC half
+    cahnQuestion: 3000,       // David Cahn's "$3 trillion question" (rev needed for 2026 infra spend)
+    bainNeed2030: 2000,       // Bain: annual AI revenue needed by 2030…
+    bainShortfall: 800,       // …and the projected shortfall
+    kuppermanBreakeven: 400,  // revenue needed to break even on 2025 capex alone ($320–480B)
+    burryDepreciation: 176,   // Burry: understated depreciation 2026–28 across big tech
+  };
+
+  const sources = [
+    "Company filings & earnings calls: Microsoft, Alphabet, Amazon, Meta, Oracle, NVIDIA, AMD, Broadcom, TSMC, Micron, SK Hynix, Dell, Supermicro, CoreWeave, Nebius, Equinix, Digital Realty, Vertiv, GE Vernova (through Jul 2026)",
+    "Dell'Oro Group — datacenter capex: $455B (2024), ~$715B (2025), >$1T forecast (2026), $1.7T/yr by 2030",
+    "Goldman Sachs — AI capex $765B (2026E), $1.6T (2031E); US datacenter additions 13.6 GW (2026E)",
+    "Morgan Stanley — $2.9T datacenter investment through 2028; JPMorgan — $5.5T through 2030; McKinsey — $5.2T & 156 GW by 2030",
+    "Gartner — AI models & platforms end-user spend: $39B (2025), $64B (2026E); Menlo Ventures — enterprise GenAI $37B (2025)",
+    "Crunchbase / PitchBook — AI VC: $50B (2023), $114B (2024), $202B (2025), ~$400B (H1 2026); OpenAI+Anthropic = 43% of all H1-2026 VC",
+    "Press reporting on private companies (The Information, Bloomberg, Reuters, CNBC, WSJ, TechCrunch, Sacra): OpenAI ~$25–33B run-rate, $852B valuation, ~$50B 2026 compute spend, ~$600B committed through 2030; Anthropic claimed $47B run-rate, $965B valuation; xAI/SpaceX compute-rental ARR ~$26B",
+    "Bubble math: David Cahn (Sequoia) '$3T question'; Bain — $2T revenue needed by 2030, ~$800B shortfall; Harris Kupperman — $320–480B break-even on 2025 capex; Michael Burry — $176B understated depreciation (contested by NVIDIA, CoreWeave)",
+    "Circular-deal reporting: NVIDIA $30B into OpenAI + $10B Anthropic + $2B xAI + CoreWeave backstop; Amazon $50B into OpenAI, $33B cumulative into Anthropic; Google up to $40B into Anthropic; Anthropic → xAI $1.25B/month; Google → SpaceX $920M/month",
+  ];
+
+  return { groups, GROUP_COLORS, history, defaults, sliders, scenarios, splits, meta, aggregates, sources };
+})();
+
+</script>
+<script>
+/* ============================================================
+   AI Bubble Simulator — model engine
+   Pure functions: DATA + slider params in, yearly rows + flows out.
+   All values in $B. Deliberately a toy — but an honest one:
+   every equation is documented in the methodology section.
+   ============================================================ */
+
+window.Model = (function () {
+
+  // ---------- formatting ----------
+  function fmtB(v) {
+    const sign = v < 0 ? "−" : "";
+    const a = Math.abs(v);
+    if (a >= 995) return sign + "$" + (a / 1000).toFixed(2) + "T";
+    if (a >= 99.5) return sign + "$" + Math.round(a) + "B";
+    if (a >= 10) return sign + "$" + a.toFixed(0) + "B";
+    if (a >= 1) return sign + "$" + a.toFixed(1) + "B";
+    return sign + "$" + a.toFixed(1) + "B";
+  }
+  function fmtSigned(v) { return (v >= 0 ? "+" : "−") + fmtB(Math.abs(v)).slice(0); }
+  function fmtPct(v) { return (v >= 0 ? "" : "−") + Math.abs(v).toFixed(0) + "%"; }
+  function fmtGw(v) { return v.toFixed(v >= 20 ? 0 : 1) + " GW"; }
+
+  // ---------- growth path helper ----------
+  // start value at y0, growth g% in y0+1, growth fades by `fade` pp each
+  // following year (floored at -60%).
+  function path(years, y0, v0, g, fade, hist, histKey) {
+    const out = {};
+    let v = v0, growth = g;
+    for (const y of years) {
+      if (hist[y] && hist[y][histKey] != null) { out[y] = hist[y][histKey]; continue; }
+      if (y === y0) { out[y] = v0; continue; }
+      if (y > y0) {
+        v = v * (1 + Math.max(growth, -60) / 100);
+        out[y] = Math.max(v, 0);
+        growth -= fade;
+      }
+    }
+    return out;
+  }
+
+  // ---------- the projection ----------
+  function project(data, p) {
+    const [startY, endY] = data.meta.horizon;
+    const y0 = data.meta.presentYear; // 2026
+    const years = [];
+    for (let y = startY; y <= endY; y++) years.push(y);
+    const S = data.splits;
+    const hist = data.history;
+
+    // pre-history capex so depreciation of the 2023 fleet is counted
+    const PRE = { 2023: { aiCapex: 150, endRev: 25 } };
+
+    const capex = path(years, y0, p.capex26, p.capexGrowth, p.capexFade, hist, "aiCapex");
+    const endRev = path(years, y0, p.endRev26, p.demandGrowth, p.demandFade, hist, "endRev");
+    const vc = path(years, y0, p.vc26, p.vcGrowth, 0, hist, "vc");
+    const debt = path(years, y0, p.debt26, p.debtGrowth, 0, hist, "debt");
+    const vendorHist = { 2024: 10, 2025: 40 };
+    const vendor = {};
+    for (const y of years) vendor[y] = y < y0 ? (vendorHist[y] || 0) : p.vendor26;
+
+    const capexAll = Object.assign({}, PRE_map(PRE, "aiCapex"), capex);
+
+    const rows = {};
+    let gwOnline = 3; // rough installed AI base entering 2024
+    let cumSpend = 0, cumRev = 0, cumIn = 0, cumOut = 0;
+
+    for (const y of years) {
+      const r = { year: y };
+      r.capex = capex[y];
+      r.endRev = endRev[y];
+      r.vc = vc[y];
+      r.debt = debt[y];
+      r.vendor = vendor[y];
+
+      // --- capacity ---
+      r.gwAdded = (hist[y] && hist[y].gwAdded != null) ? hist[y].gwAdded : r.capex / p.costPerGw;
+      gwOnline += r.gwAdded;
+      r.gwOnline = gwOnline;
+      r.opex = gwOnline * p.opexPerGw;
+
+      // --- depreciation & net PP&E over vintages (straight line, in-service same year) ---
+      let dep = 0, ppe = 0;
+      for (let v = 2023; v <= y; v++) {
+        const cv = capexAll[v] != null ? capexAll[v] : 0;
+        const age = y - v + 1; // years of depreciation taken through year y
+        if (age <= p.deprYears) dep += cv / p.deprYears;
+        ppe += cv * Math.max(0, 1 - age / p.deprYears);
+      }
+      r.depreciation = dep;
+      r.netPPE = ppe;
+
+      // --- what the buildout must earn ---
+      // infra must cover depreciation + running cost + a return on the fleet;
+      // end revenue must additionally cover the model/app layer above infra.
+      r.requiredRev = (dep + r.opex + (p.hurdle / 100) * ppe) * S.nonInfraCostFactor;
+      r.gap = r.requiredRev - r.endRev;
+
+      // --- revenue split across layers ---
+      r.labRev = r.endRev * S.endRevToLabs;
+      r.cloudEndRev = r.endRev * S.endRevToClouds;
+      r.startupRev = r.endRev * S.endRevToStartups;
+
+      // --- funding split ---
+      r.vcLabs = r.vc * S.vcToLabs;
+      r.vcStartups = r.vc - r.vcLabs;
+
+      // --- internal spending ---
+      // Lab cost ratios glide from today's burn levels toward "mature"
+      // levels by 2032 — the scale-economics bet the whole trade rests on.
+      const t = Math.min(1, Math.max(0, (y - y0) / 6));
+      const computeRatio = S.labComputeRatio + (S.matureLabCompute - S.labComputeRatio) * t;
+      const otherRatio = S.labOtherRatio + (S.matureLabOther - S.labOtherRatio) * t;
+      const startupOtherRatio = 0.80 + (0.50 - 0.80) * t;
+      r.labComputeSpend = r.labRev * computeRatio;
+      r.labOther = r.labRev * otherRatio;
+      r.startupApiSpend = r.startupRev * S.startupApiShare + r.vcStartups * 0.05;
+      r.startupCloudSpend = r.startupRev * 0.15 + r.vcStartups * 0.08;
+      r.startupOther = r.startupRev * startupOtherRatio + r.vcStartups * 0.20;
+
+      // --- compute layer ---
+      r.computeRev = r.cloudEndRev + r.labComputeSpend + r.startupCloudSpend;
+      r.neoRev = r.computeRev * S.neocloudShare;
+      r.hyperRev = r.computeRev - r.neoRev;
+
+      // --- capex by payer ---
+      r.hyperCapex = r.capex * S.hyperscalerCapexShare;
+      r.neoCapex = r.capex - r.hyperCapex;
+      r.debtToNeo = Math.min(r.debt, r.neoCapex * 0.85);
+      r.debtToHyper = r.debt - r.debtToNeo;
+      r.neoEquity = Math.max(0, r.neoCapex - r.neoRev * 0.5 - r.debtToNeo);
+
+      // --- hardware layer ---
+      r.hardwareSpend = r.capex * (p.gpuShare / 100);
+      r.dcBuildSpend = r.capex - r.hardwareSpend;
+      r.chipRev = r.hardwareSpend;
+      r.chipProfit = r.chipRev * (p.chipMargin / 100);
+      r.fabsRev = r.chipRev * S.fabsShare;
+      r.chipOpexShare = Math.max(0, 1 - p.chipMargin / 100 - S.fabsShare);
+      r.fabProfit = r.fabsRev * 0.35;
+
+      // --- profits & returns to investors ---
+      r.cloudProfit = r.computeRev * (p.cloudMargin / 100);
+      r.labProfit = r.labRev - r.labComputeSpend - r.labOther;
+      r.startupProfit = r.startupRev - r.startupApiSpend - r.startupCloudSpend - r.startupOther;
+      const profitPool = r.chipProfit + r.fabProfit + r.cloudProfit
+        + Math.max(0, r.labProfit) + Math.max(0, r.startupProfit);
+      r.profitPool = profitPool;
+      r.returns = (hist[y] && hist[y].returns != null)
+        ? hist[y].returns
+        : profitPool * (p.payout / 100);
+
+      // --- big-tech treasury subsidy: capex not covered by AI cash flow or debt ---
+      const hyperAiOpCash = r.hyperRev * 0.55; // EBITDA-ish cash from AI ops
+      r.treasury = Math.max(0, r.hyperCapex - hyperAiOpCash - r.debtToHyper);
+
+      // --- burn & funding crunch ---
+      r.labBurn = Math.max(0, -(r.labProfit));
+      r.startupBurn = Math.max(0, -(r.startupProfit));
+      r.fundingNeed = r.labBurn + r.startupBurn;
+      r.fundingAvail = r.vc + r.vendor;
+      r.crunch = y >= y0 && r.fundingNeed > r.fundingAvail;
+
+      // --- system boundary totals ---
+      r.moneyIn = r.endRev + r.vc + r.debt + r.treasury + r.neoEquity;
+      r.leak = r.dcBuildSpend + r.opex * 0.9 + r.fabsRev * 0.5
+        + r.chipRev * r.chipOpexShare
+        + r.labOther * 0.6 + r.startupOther * 0.6;
+      r.moneyOut = r.returns + r.leak;
+
+      cumSpend += r.capex + r.opex;
+      cumRev += r.endRev;
+      cumIn += r.moneyIn;
+      cumOut += r.returns;
+      r.cumSpend = cumSpend;
+      r.cumRev = cumRev;
+      r.cumGap = cumSpend - cumRev;
+      r.bubbleIndex = cumSpend / Math.max(1, cumRev);
+
+      rows[y] = r;
+    }
+
+    // ---------- verdict ----------
+    // Two ways the music stops: labs' burn outruns fresh money (crunch),
+    // or the buildout goes into hard reverse while the fleet still isn't
+    // paying for itself (bust — capex down ≥25% YoY with the gap open).
+    let justifiedYear = null, labCrunchYear = null, bustYear = null, peakCapexYear = years[0];
+    for (const y of years) {
+      if (justifiedYear == null && rows[y].endRev >= rows[y].requiredRev) justifiedYear = y;
+      if (labCrunchYear == null && rows[y].crunch) labCrunchYear = y;
+      if (bustYear == null && y > y0 && rows[y - 1].capex > 0
+        && rows[y].capex <= rows[y - 1].capex * 0.75 + 1e-9 && rows[y].gap > 0) bustYear = y;
+      if (rows[y].capex > rows[peakCapexYear].capex) peakCapexYear = y;
+    }
+    const popCandidates = [labCrunchYear, bustYear].filter(v => v != null);
+    let popYear = popCandidates.length ? Math.min.apply(null, popCandidates) : null;
+    // whichever comes first defines the story: break-even before the pop makes
+    // the slowdown digestion; a pop before break-even voids the break-even
+    if (popYear != null && justifiedYear != null) {
+      if (justifiedYear <= popYear) popYear = null;
+      else justifiedYear = null;
+    }
+    const last = rows[endY];
+    const verdict = {
+      justifiedYear,
+      crunchYear: popYear,
+      isBust: popYear != null && bustYear === popYear,
+      peakCapexYear, last, years,
+    };
+
+    return { years, rows, verdict };
+  }
+
+  function PRE_map(pre, key) {
+    const o = {};
+    for (const y in pre) o[y] = pre[y][key];
+    return o;
+  }
+
+  // ---------- sankey flows for one year ----------
+  function flowsFor(data, p, r) {
+    const S = data.splits;
+    const C = {
+      demand: "var(--c-demand)", funding: "var(--c-debt)", labs: "var(--c-vc)",
+      compute: "var(--c-compute)", hw: "var(--c-capex)", ret: "var(--c-returns)",
+      leak: "var(--c-leak)", circ: "var(--c-circular)",
+    };
+    const nodes = [
+      { id: "ent", label: "Enterprise customers", col: 0, color: C.demand, note: "Businesses paying for AI seats, APIs and AI cloud" },
+      { id: "con", label: "Consumers", col: 0, color: C.demand, note: "Subscriptions like ChatGPT Plus and AI apps" },
+      { id: "vcf", label: "Venture capital", col: 0, color: C.labs, note: "Equity into labs and startups — money in, hoping for money out later" },
+      { id: "dbt", label: "Debt markets", col: 0, color: C.funding, note: "Bonds and GPU-backed loans financing datacenters" },
+      { id: "tre", label: "Big-tech treasuries", col: 0, color: C.compute, note: "Capex not covered by AI cash flow or debt — subsidized by search/ads/Windows profits" },
+      { id: "lab", label: "AI labs", col: 1, color: C.labs, note: "OpenAI, Anthropic, xAI, Mistral…" },
+      { id: "stp", label: "AI startups", col: 1, color: C.labs, note: "The application layer (virtual group)" },
+      { id: "hyp", label: "Hyperscalers", col: 1, color: C.compute, note: "Microsoft, Google, Amazon, Meta, Oracle" },
+      { id: "neo", label: "Neoclouds", col: 1, color: C.compute, note: "CoreWeave, Nebius, Lambda, Crusoe…" },
+      { id: "chp", label: "NVIDIA & chip makers", col: 2, color: C.hw, note: "Accelerators, networking, AI servers" },
+      { id: "dcb", label: "DC construction & power", col: 2, color: C.leak, note: "Shells, cooling, turbines, grid hookups" },
+      { id: "fab", label: "TSMC, memory & parts", col: 3, color: C.hw, note: "Wafers, HBM, components" },
+      { id: "inv", label: "Investors (buybacks + divs)", col: 3, color: C.ret, note: "Money leaving the ecosystem back to shareholders" },
+      { id: "eco", label: "Wider economy", col: 3, color: C.leak, note: "Construction wages, electricity, salaries — real economy leakage" },
+      { id: "rtn", label: "Retained & war chests", col: 3, color: C.leak, note: "Cash kept inside companies for the next round" },
+    ];
+
+    const L = [];
+    const add = (a, b, v, note, color, circular) => {
+      if (v > 0.5) L.push({ source: a, target: b, value: v, note, color, circular: !!circular });
+    };
+
+    // demand → operators
+    add("ent", "lab", r.labRev * 0.55, "Enterprise API & seat revenue billed by labs");
+    add("con", "lab", r.labRev * 0.45, "Consumer subscriptions billed by labs");
+    add("ent", "hyp", r.cloudEndRev * (1 - S.neocloudShare), "AI cloud consumed by outside customers");
+    add("ent", "neo", r.cloudEndRev * S.neocloudShare, "AI cloud consumed by outside customers, served from neoclouds");
+    add("ent", "stp", r.startupRev * 0.7, "Enterprise spend on AI applications");
+    add("con", "stp", r.startupRev * 0.3, "Consumer spend on AI applications");
+
+    // funding → operators
+    add("vcf", "lab", r.vcLabs, "VC/PE equity into frontier labs");
+    add("vcf", "stp", r.vcStartups, "VC equity into the application layer");
+    add("vcf", "neo", r.neoEquity, "Equity raised by neoclouds (IPO/secondary)");
+    add("dbt", "neo", r.debtToNeo, "GPU-backed loans and bonds");
+    add("dbt", "hyp", r.debtToHyper, "Investment-grade bonds funding capex");
+    add("tre", "hyp", r.treasury, "Capex subsidized from non-AI profits");
+
+    // operators ↔ operators
+    add("stp", "lab", r.startupApiSpend, "Startups' model API bills");
+    add("lab", "hyp", r.labComputeSpend * (1 - S.neocloudShare), "Labs renting hyperscaler compute");
+    add("lab", "neo", r.labComputeSpend * S.neocloudShare, "Labs renting neocloud compute");
+    add("stp", "hyp", r.startupCloudSpend * (1 - S.neocloudShare), "Startups' hosting bills");
+    add("stp", "neo", r.startupCloudSpend * S.neocloudShare, "Startups on neoclouds");
+
+    // capex → hardware & construction
+    const gpuShare = p.gpuShare / 100;
+    add("hyp", "chp", r.hyperCapex * gpuShare, "Hyperscaler chip & server orders");
+    add("hyp", "dcb", r.hyperCapex * (1 - gpuShare), "Hyperscaler datacenter construction");
+    add("neo", "chp", r.neoCapex * gpuShare, "Neocloud GPU purchases");
+    add("neo", "dcb", r.neoCapex * (1 - gpuShare), "Neocloud datacenter construction");
+
+    // hardware layer outflows
+    add("chp", "fab", r.fabsRev, "Wafers, HBM and components (COGS)");
+    const chipRet = Math.min(r.returns * 0.5, r.chipProfit * 0.9);
+    add("chp", "inv", chipRet, "Chip-maker buybacks and dividends");
+    const vendorChips = r.vendor * 0.4, vendorHyper = r.vendor * 0.6;
+    add("chp", "lab", vendorChips, "Circular: NVIDIA & co investing in the labs that buy their chips", C.circ, true);
+    const chipOpexEco = r.chipRev * (r.chipOpexShare != null ? r.chipOpexShare : 0.15);
+    const chipKeep = Math.max(0, r.chipRev - r.fabsRev - chipRet - vendorChips - chipOpexEco);
+    add("chp", "rtn", chipKeep, "Chip-maker retained cash");
+    add("chp", "eco", chipOpexEco, "Chip-maker opex — salaries, R&D outside the loop");
+
+    // compute layer outflows
+    const hyperRet = Math.max(0, r.returns - chipRet);
+    add("hyp", "inv", hyperRet, "Hyperscaler buybacks and dividends (AI-attributable share)");
+    add("hyp", "lab", vendorHyper, "Circular: hyperscalers investing in the labs that rent their clouds", C.circ, true);
+    add("hyp", "eco", r.opex * 0.75, "Power and operations");
+    add("neo", "eco", r.opex * 0.15, "Neocloud power and operations");
+    const hypIn = r.cloudEndRev * (1 - S.neocloudShare) + r.labComputeSpend * (1 - S.neocloudShare) + r.startupCloudSpend * (1 - S.neocloudShare) + r.debtToHyper + r.treasury;
+    const hypOut = r.hyperCapex + hyperRet + vendorHyper + r.opex * 0.75;
+    add("hyp", "rtn", Math.max(0, hypIn - hypOut), "Hyperscaler retained cash");
+
+    // labs & startups outflows
+    add("lab", "eco", r.labOther, "Lab salaries and other costs");
+    const labIn = r.labRev + r.vcLabs + r.vendor + r.startupApiSpend;
+    add("lab", "rtn", Math.max(0, labIn - r.labComputeSpend - r.labOther), "Lab war chests (unspent raises)");
+    add("stp", "eco", r.startupOther, "Startup salaries and other costs");
+    const stpIn = r.startupRev + r.vcStartups;
+    add("stp", "rtn", Math.max(0, stpIn - r.startupApiSpend - r.startupCloudSpend - r.startupOther), "Startup runway kept in the bank");
+
+    // construction is pure leakage
+    add("dcb", "eco", r.dcBuildSpend, "Construction, cooling, turbines, grid");
+
+    return { nodes, links: L };
+  }
+
+  const api = { project, flowsFor, fmtB, fmtSigned, fmtPct, fmtGw };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  return api;
+})();
+
+</script>
+<script>
+/* ============================================================
+   AI Bubble Simulator — sankey renderer
+   Hand-rolled: fixed columns, stacked ribbons, and circular
+   vendor-financing links drawn as loops under the diagram.
+   ============================================================ */
+
+window.Sankey = (function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const W = 1080, NODE_W = 12, TOP = 16, GAP = 13;
+  const COL_X = [46, 372, 690, 1010];
+  const PLOT_H = 470, LOOP_PAD = 78;
+  const H = TOP + PLOT_H + LOOP_PAD;
+
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  // Render {nodes, links} into svg#sankey. tip = tooltip div element.
+  function render(svg, tip, flows, fmt) {
+    svg.innerHTML = "";
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+    const nodes = {}, cols = [[], [], [], []];
+    flows.nodes.forEach(n => {
+      const node = Object.assign({ in: 0, out: 0 }, n);
+      nodes[n.id] = node;
+    });
+    const links = flows.links.filter(l => nodes[l.source] && nodes[l.target]);
+    links.forEach(l => {
+      nodes[l.source].out += l.value;
+      nodes[l.target].in += l.value;
+    });
+    flows.nodes.forEach(n => {
+      const node = nodes[n.id];
+      node.value = Math.max(node.in, node.out);
+      if (node.value > 0.25) cols[node.col].push(node);
+    });
+
+    // vertical scale: fit the tallest column
+    let k = Infinity;
+    cols.forEach(c => {
+      const sum = c.reduce((s, n) => s + n.value, 0);
+      if (sum > 0) k = Math.min(k, (PLOT_H - GAP * (c.length - 1)) / sum);
+    });
+    if (!isFinite(k)) k = 1;
+
+    // place nodes
+    cols.forEach(col => {
+      let y = TOP;
+      col.forEach(n => {
+        n.x = COL_X[n.col] - (n.col === 3 ? NODE_W : 0);
+        n.y = y;
+        n.h = Math.max(3, n.value * k);
+        y += n.h + GAP;
+        n.inOff = 0; n.outOff = 0;
+      });
+    });
+
+    const regular = links.filter(l => !l.circular && nodes[l.source].value > 0.25 && nodes[l.target].value > 0.25);
+    const circular = links.filter(l => l.circular && nodes[l.source].value > 0.25 && nodes[l.target].value > 0.25);
+
+    // stack ribbons top-down, sorted by the counterpart's y to minimize crossings
+    regular.sort((a, b) => (nodes[a.target].y - nodes[b.target].y) || (nodes[a.source].y - nodes[b.source].y));
+    const bySource = {};
+    regular.forEach(l => (bySource[l.source] = bySource[l.source] || []).push(l));
+    for (const id in bySource) bySource[id].sort((a, b) => nodes[a.target].y - nodes[b.target].y);
+    const byTarget = {};
+    regular.forEach(l => (byTarget[l.target] = byTarget[l.target] || []).push(l));
+    for (const id in byTarget) byTarget[id].sort((a, b) => nodes[a.source].y - nodes[b.source].y);
+
+    const gLinks = el("g", { fill: "none" }, svg);
+    const gCirc = el("g", { fill: "none" }, svg);
+    const gNodes = el("g", {}, svg);
+
+    const paths = [];
+    for (const id in bySource) {
+      bySource[id].forEach(l => {
+        const s = nodes[l.source], t = nodes[l.target];
+        const th = Math.max(1.5, l.value * k);
+        const y0 = s.y + s.outOff + th / 2; s.outOff += th;
+        l._y0 = y0; l._th = th;
+      });
+    }
+    for (const id in byTarget) {
+      byTarget[id].forEach(l => {
+        const t = nodes[l.target];
+        const th = l._th;
+        l._y1 = t.y + t.inOff + th / 2; t.inOff += th;
+      });
+    }
+    regular.forEach(l => {
+      const s = nodes[l.source], t = nodes[l.target];
+      const x0 = s.x + NODE_W, x1 = t.x;
+      const mid = (x0 + x1) / 2;
+      const d = `M ${x0} ${l._y0} C ${mid} ${l._y0}, ${mid} ${l._y1}, ${x1} ${l._y1}`;
+      const p = el("path", {
+        d, stroke: l.color || nodes[l.source].color, "stroke-width": l._th,
+        "stroke-opacity": 0.32, "stroke-linecap": "butt", class: "ribbon",
+      }, gLinks);
+      p._link = l;
+      paths.push(p);
+    });
+
+    // circular links loop under the diagram; same-column links bow out left
+    // so they don't collapse into a vertical stroke
+    circular.forEach((l, i) => {
+      const s = nodes[l.source], t = nodes[l.target];
+      const th = Math.max(2, l.value * k);
+      const loopY = TOP + PLOT_H + 26 + i * 26;
+      const x0 = s.x + NODE_W / 2, x1 = t.x + NODE_W / 2;
+      const sy = s.y + s.h, ty = t.y + t.h;
+      const bow = Math.abs(x0 - x1) < 60 ? 170 : 0;
+      const d = `M ${x0} ${sy} C ${x0 - bow} ${loopY}, ${x1 - bow} ${loopY}, ${x1} ${ty + 2}`;
+      const p = el("path", {
+        d, stroke: l.color || "var(--c-circular)", "stroke-width": Math.min(th, 22),
+        "stroke-opacity": 0.5, "stroke-linecap": "round", class: "ribbon circular",
+      }, gCirc);
+      p._link = l;
+      paths.push(p);
+      // label at the bezier's midpoint so it follows the bow
+      const midX = (x0 + 3 * (x0 - bow) + 3 * (x1 - bow) + x1) / 8;
+      const lbl = el("text", {
+        x: midX, y: loopY + 4, "text-anchor": "middle", class: "node-value",
+      }, gCirc);
+      lbl.textContent = "↺ " + fmt(l.value);
+    });
+
+    // nodes + labels
+    flows.nodes.forEach(nd => {
+      const n = nodes[nd.id];
+      if (!n || n.value <= 0.25 || n.x == null) return;
+      const r = el("rect", {
+        x: n.x, y: n.y, width: NODE_W, height: n.h, rx: 3,
+        fill: n.color, class: "sk-node", tabindex: "0",
+        role: "img", "aria-label": `${n.label}: ${fmt(n.value)}`,
+      }, gNodes);
+      r._node = n;
+      const anchor = n.col === 3 ? "end" : "start";
+      const lx = n.col === 3 ? n.x - 7 : n.x + NODE_W + 7;
+      const ly = Math.min(n.y + 11, TOP + PLOT_H - 4);
+      const t1 = el("text", { x: lx, y: ly, "text-anchor": anchor, class: "node-label" }, gNodes);
+      t1.textContent = n.label;
+      const t2 = el("text", { x: lx, y: ly + 13, "text-anchor": anchor, class: "node-value" }, gNodes);
+      t2.textContent = fmt(n.value);
+    });
+
+    // ---- interaction ----
+    const wrap = svg.parentElement;
+    function showTip(html, evt) {
+      tip.innerHTML = html;
+      tip.hidden = false;
+      const wr = wrap.getBoundingClientRect();
+      const sl = wrap.scrollLeft || 0;
+      let x = evt.clientX - wr.left + sl + 14, y = evt.clientY - wr.top + 10;
+      const tw = tip.offsetWidth, thh = tip.offsetHeight;
+      if (x + tw > sl + wr.width - 8) x = x - tw - 26;
+      if (y + thh > wr.height - 4) y = wr.height - thh - 4;
+      tip.style.left = x + "px";
+      tip.style.top = y + "px";
+    }
+    function hideTip() { tip.hidden = true; }
+
+    paths.forEach(p => {
+      p.addEventListener("mousemove", evt => {
+        paths.forEach(q => q.setAttribute("stroke-opacity", q === p ? 0.62 : 0.14));
+        const l = p._link;
+        showTip(
+          `<div class="tip-title">${nodes[l.source].label} → ${nodes[l.target].label}</div>` +
+          `<div class="tip-val">${fmt(l.value)} / yr</div>` +
+          (l.note ? `<div class="tip-note">${l.note}</div>` : ""), evt);
+      });
+      p.addEventListener("mouseleave", () => {
+        paths.forEach(q => q.setAttribute("stroke-opacity", q.classList ? (q.getAttribute("class").includes("circular") ? 0.5 : 0.32) : 0.32));
+        hideTip();
+      });
+    });
+    gNodes.querySelectorAll(".sk-node").forEach(r => {
+      const show = evt => {
+        const n = r._node;
+        showTip(
+          `<div class="tip-title">${n.label}</div>` +
+          `<div class="tip-val">in ${fmt(n.in)} · out ${fmt(n.out)}</div>` +
+          (n.note ? `<div class="tip-note">${n.note}</div>` : ""), evt);
+      };
+      r.addEventListener("mousemove", show);
+      r.addEventListener("focus", evt => {
+        const n = r._node;
+        const fake = { clientX: wrap.getBoundingClientRect().left + (n.x * wrap.clientWidth / W), clientY: wrap.getBoundingClientRect().top + 40 };
+        show(fake);
+      });
+      r.addEventListener("mouseleave", hideTip);
+      r.addEventListener("blur", hideTip);
+    });
+
+    return { nodes, links };
+  }
+
+  // table twin: every flow, sorted by size
+  function tableTwin(container, flows, fmt) {
+    const rows = flows.links.slice().sort((a, b) => b.value - a.value);
+    const byId = {};
+    flows.nodes.forEach(n => byId[n.id] = n);
+    let html = `<table class="data"><caption>All flows for the selected year, largest first</caption>
+      <thead><tr><th>From</th><th>To</th><th>$B / yr</th><th style="text-align:left">What it is</th></tr></thead><tbody>`;
+    rows.forEach(l => {
+      html += `<tr><td>${byId[l.source].label}</td><td style="text-align:left">${byId[l.target].label}</td>
+        <td>${l.value.toFixed(1)}</td><td style="text-align:left">${l.note || ""}${l.circular ? " ↺" : ""}</td></tr>`;
+    });
+    html += "</tbody></table>";
+    container.innerHTML = html;
+  }
+
+  return { render, tableTwin };
+})();
+
+</script>
+<script>
+/* ============================================================
+   AI Bubble Simulator — chart components
+   Hand-rolled SVG: line charts (with gap wash), columns + line,
+   diverging stacked columns. Shared: crosshair + tooltip,
+   legend, table twin, keyboard navigation.
+   Hover/keyboard listeners are attached ONCE per chart; draw()
+   refreshes geometry via parts.geom so updates never stack
+   duplicate handlers.
+   ============================================================ */
+
+window.Charts = (function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const VW = 560, VH = 290;
+  const M = { l: 48, r: 92, t: 14, b: 26 };
+
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  function fmtAxis(v, unit) {
+    if (unit === "GW") return Math.round(v) + "";
+    const a = Math.abs(v);
+    const s = a >= 1000 ? (a / 1000).toFixed(a >= 2000 ? 0 : 1) + "T" : Math.round(a) + "B";
+    return (v < 0 ? "−" : "") + s;
+  }
+  function fmtVal(v, unit) {
+    if (unit === "GW") return v.toFixed(v >= 20 ? 0 : 1) + " GW";
+    return window.Model.fmtB(v);
+  }
+
+  function niceTicks(lo, hi, n) {
+    const span = hi - lo || 1;
+    const step0 = span / n;
+    const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+    let step = mag;
+    for (const m of [1, 2, 2.5, 5, 10]) { if (step0 <= m * mag) { step = m * mag; break; } }
+    const ticks = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) ticks.push(Math.round(v * 100) / 100);
+    return ticks;
+  }
+
+  // ---------- shared scaffold ----------
+  function scaffold(container, cfg) {
+    container.innerHTML = `
+      <div class="card-head"><div>
+        <div class="eyebrow">${cfg.eyebrow || ""}</div>
+        <h3>${cfg.title}</h3>
+        <p class="card-sub">${cfg.sub || ""}</p>
+      </div></div>
+      <div class="chart-legend"></div>
+      <div class="chart-body">
+        <svg role="img" aria-label="${cfg.title}" tabindex="0"></svg>
+        <div class="viz-tip" hidden></div>
+      </div>
+      <details class="table-twin"><summary>View as table</summary><div class="twin-tbl"></div></details>`;
+    return {
+      legend: container.querySelector(".chart-legend"),
+      subEl: container.querySelector(".card-sub"),
+      svg: container.querySelector("svg"),
+      tip: container.querySelector(".viz-tip"),
+      body: container.querySelector(".chart-body"),
+      tbl: container.querySelector(".twin-tbl"),
+      geom: null,   // set by each draw()
+      hairEl: null, // crosshair line, recreated by each draw()
+    };
+  }
+
+  function renderLegend(elx, series) {
+    elx.innerHTML = series.map(s =>
+      `<span class="key"><span class="${s.kind === "line" || s.type === "line" ? "line-key" : "swatch"}" style="background:${s.color}"></span>${s.name}</span>`
+    ).join("");
+  }
+
+  function renderTwin(tbl, years, series, unit) {
+    let html = `<table class="data"><thead><tr><th>Series</th>${years.map(y => `<th>${y}</th>`).join("")}</tr></thead><tbody>`;
+    series.forEach(s => {
+      html += `<tr><td>${s.name}</td>${s.values.map(v => `<td>${unit === "GW" ? v.toFixed(1) : Math.round(v)}</td>`).join("")}</tr>`;
+    });
+    html += "</tbody></table>";
+    tbl.innerHTML = html;
+  }
+
+  // crosshair + tooltip + keyboard — attached ONCE; reads parts.geom/cfg live
+  function attachHover(parts, cfg) {
+    const { svg, tip, body } = parts;
+    let idx = -1;
+
+    function setIdx(i, clientX, clientY) {
+      idx = i;
+      const hair = parts.hairEl;
+      if (i < 0 || !parts.geom) {
+        if (hair) hair.setAttribute("visibility", "hidden");
+        tip.hidden = true;
+        return;
+      }
+      const { xOf, years } = parts.geom;
+      const x = xOf(i);
+      if (hair) {
+        hair.setAttribute("x1", x); hair.setAttribute("x2", x);
+        hair.setAttribute("visibility", "visible");
+      }
+      const rows = cfg.series.map(s =>
+        `<div><span class="swatch" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${s.color};margin-right:6px"></span>${s.name}: <span class="tip-val">${fmtVal(s.values[i], cfg.unit)}</span></div>`
+      ).join("");
+      tip.innerHTML = `<div class="tip-title">${years[i]}</div>${rows}`;
+      tip.hidden = false;
+      const wr = body.getBoundingClientRect();
+      const sl = body.scrollLeft || 0;
+      const px = (clientX != null ? clientX - wr.left + sl : (x / VW) * wr.width) + 12;
+      let lx = px, ly = clientY != null ? clientY - wr.top + 12 : 20;
+      if (lx + tip.offsetWidth > sl + wr.width - 6) lx -= tip.offsetWidth + 22;
+      if (ly + tip.offsetHeight > wr.height - 4) ly = wr.height - tip.offsetHeight - 4;
+      tip.style.left = Math.max(0, lx) + "px";
+      tip.style.top = Math.max(0, ly) + "px";
+    }
+    parts.resetHover = () => setIdx(-1);
+
+    svg.addEventListener("mousemove", evt => {
+      if (!parts.geom) return;
+      const { xOf, years } = parts.geom;
+      const r = svg.getBoundingClientRect();
+      const vx = (evt.clientX - r.left) / r.width * VW;
+      let best = 0, bd = Infinity;
+      years.forEach((y, i) => { const d = Math.abs(xOf(i) - vx); if (d < bd) { bd = d; best = i; } });
+      setIdx(best, evt.clientX, evt.clientY);
+    });
+    svg.addEventListener("mouseleave", () => setIdx(-1));
+    svg.addEventListener("keydown", evt => {
+      if (!parts.geom) return;
+      const n = parts.geom.years.length;
+      if (evt.key === "ArrowRight") { setIdx(Math.min(n - 1, (idx < 0 ? 0 : idx + 1))); evt.preventDefault(); }
+      else if (evt.key === "ArrowLeft") { setIdx(Math.max(0, (idx < 0 ? n - 1 : idx - 1))); evt.preventDefault(); }
+      else if (evt.key === "Escape") setIdx(-1);
+      else if (evt.key === "Enter" && idx >= 0 && cfg.onYearClick) cfg.onYearClick(parts.geom.years[idx]);
+    });
+    if (cfg.onYearClick) {
+      svg.style.cursor = "pointer";
+      svg.addEventListener("click", () => { if (idx >= 0 && parts.geom) cfg.onYearClick(parts.geom.years[idx]); });
+    }
+  }
+
+  function beginDraw(parts) {
+    parts.svg.innerHTML = "";
+    parts.svg.setAttribute("viewBox", `0 0 ${VW} ${VH}`);
+    parts.tip.hidden = true;
+  }
+  function endDraw(parts, xOf, years) {
+    parts.hairEl = el("line", { class: "axis-line", y1: M.t, y2: VH - M.b, visibility: "hidden" }, parts.svg);
+    parts.geom = { xOf, years };
+  }
+  function applyUpdate(parts, cfg, newCfg) {
+    Object.assign(cfg, newCfg);
+    if (parts.subEl && cfg.sub != null) parts.subEl.textContent = cfg.sub;
+  }
+
+  function axes(svg, ticks, yOf, unit) {
+    ticks.forEach(tv => {
+      const y = yOf(tv);
+      el("line", { x1: M.l, x2: VW - M.r, y1: y, y2: y, class: tv === 0 ? "axis-line" : "grid-line" }, svg);
+      const t = el("text", { x: M.l - 6, y: y + 3.5, "text-anchor": "end", class: "axis-text" }, svg);
+      t.textContent = fmtAxis(tv, unit);
+    });
+  }
+  function xAxis(svg, years, xOf) {
+    years.forEach((yr, i) => {
+      const t = el("text", { x: xOf(i), y: VH - M.b + 16, "text-anchor": "middle", class: "axis-text" }, svg);
+      t.textContent = "’" + String(yr).slice(2);
+    });
+  }
+
+  // ---------- line chart (optionally with wash between series 0 and 1) ----------
+  function lines(container, cfg) {
+    const parts = scaffold(container, cfg);
+    function draw() {
+      beginDraw(parts);
+      const svg = parts.svg;
+      const years = cfg.years;
+      const all = cfg.series.flatMap(s => s.values);
+      const hi = Math.max(...all) * 1.06 || 1, lo = 0;
+      const xOf = i => M.l + (i / (years.length - 1)) * (VW - M.l - M.r);
+      const yOf = v => VH - M.b - ((v - lo) / (hi - lo)) * (VH - M.t - M.b);
+      axes(svg, niceTicks(lo, hi, 5), yOf, cfg.unit);
+      xAxis(svg, years, xOf);
+
+      if (cfg.wash) {
+        const [a, b] = cfg.wash;
+        const sa = cfg.series[a].values, sb = cfg.series[b].values;
+        let d = "M " + years.map((_, i) => `${xOf(i)} ${yOf(sa[i])}`).join(" L ");
+        d += " L " + years.map((_, i) => `${xOf(years.length - 1 - i)} ${yOf(sb[years.length - 1 - i])}`).join(" L ") + " Z";
+        el("path", { d, fill: cfg.series[a].color, opacity: 0.10 }, svg);
+      }
+
+      cfg.series.forEach(s => {
+        const d = "M " + years.map((_, i) => `${xOf(i)} ${yOf(s.values[i])}`).join(" L ");
+        el("path", { d, stroke: s.color, "stroke-width": 2, fill: "none", "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+        const li = years.length - 1;
+        el("circle", { cx: xOf(li), cy: yOf(s.values[li]), r: 4.5, fill: s.color, stroke: "var(--surface)", "stroke-width": 2 }, svg);
+      });
+
+      // direct end labels with simple collision avoidance
+      const li = years.length - 1;
+      const placed = [];
+      cfg.series.map(s => ({ s, y: yOf(s.values[li]) }))
+        .sort((a, b) => a.y - b.y)
+        .forEach(o => {
+          let y = o.y + 3.5;
+          while (placed.some(p => Math.abs(p - y) < 12)) y += 12;
+          placed.push(y);
+          const t = el("text", { x: xOf(li) + 9, y, class: "direct-label" }, svg);
+          t.textContent = o.s.short || o.s.name;
+        });
+
+      endDraw(parts, xOf, years);
+    }
+    renderLegend(parts.legend, cfg.series.map(s => Object.assign({ kind: "line" }, s)));
+    draw();
+    renderTwin(parts.tbl, cfg.years, cfg.series, cfg.unit);
+    attachHover(parts, cfg);
+    return {
+      update(newCfg) {
+        applyUpdate(parts, cfg, newCfg);
+        renderLegend(parts.legend, cfg.series.map(s => Object.assign({ kind: "line" }, s)));
+        draw();
+        renderTwin(parts.tbl, cfg.years, cfg.series, cfg.unit);
+      },
+    };
+  }
+
+  // rounded-top column path (square baseline)
+  function colPath(x, y, w, h, r, down) {
+    if (h <= 0.5) return null;
+    r = Math.min(r, w / 2, h);
+    if (!down) return `M ${x} ${y + h} L ${x} ${y + r} Q ${x} ${y} ${x + r} ${y} L ${x + w - r} ${y} Q ${x + w} ${y} ${x + w} ${y + r} L ${x + w} ${y + h} Z`;
+    return `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h - r} Q ${x + w} ${y + h} ${x + w - r} ${y + h} L ${x + r} ${y + h} Q ${x} ${y + h} ${x} ${y + h - r} Z`;
+  }
+
+  // stacked-segment height: keep the 2px surface gap, but never let a real
+  // value vanish — segments with a visible raw height get at least 1px of ink
+  function segH(raw, gap) {
+    if (raw <= 0.5) return 0;
+    return Math.max(1, raw - gap);
+  }
+
+  // ---------- columns + line, one shared axis ----------
+  function barsLine(container, cfg) {
+    const parts = scaffold(container, cfg);
+    function draw() {
+      beginDraw(parts);
+      const svg = parts.svg;
+      const years = cfg.years;
+      const hi = Math.max(...cfg.series.flatMap(s => s.values)) * 1.06 || 1;
+      const xOf = i => M.l + (i + 0.5) / years.length * (VW - M.l - M.r);
+      const yOf = v => VH - M.b - (v / hi) * (VH - M.t - M.b);
+      axes(svg, niceTicks(0, hi, 5), yOf, cfg.unit);
+      xAxis(svg, years, xOf);
+      const band = (VW - M.l - M.r) / years.length;
+      const bw = Math.min(24, band * 0.55);
+
+      cfg.series.filter(s => s.type !== "line").forEach(s => {
+        years.forEach((_, i) => {
+          const d = colPath(xOf(i) - bw / 2, yOf(s.values[i]), bw, VH - M.b - yOf(s.values[i]), 4, false);
+          if (d) el("path", { d, fill: s.color }, svg);
+        });
+      });
+      cfg.series.filter(s => s.type === "line").forEach(s => {
+        const d = "M " + years.map((_, i) => `${xOf(i)} ${yOf(s.values[i])}`).join(" L ");
+        el("path", { d, stroke: s.color, "stroke-width": 2, fill: "none", "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+        years.forEach((_, i) => el("circle", { cx: xOf(i), cy: yOf(s.values[i]), r: 4, fill: s.color, stroke: "var(--surface)", "stroke-width": 2 }, svg));
+      });
+
+      endDraw(parts, xOf, years);
+    }
+    renderLegend(parts.legend, cfg.series);
+    draw();
+    renderTwin(parts.tbl, cfg.years, cfg.series, cfg.unit);
+    attachHover(parts, cfg);
+    return {
+      update(newCfg) {
+        applyUpdate(parts, cfg, newCfg);
+        renderLegend(parts.legend, cfg.series);
+        draw();
+        renderTwin(parts.tbl, cfg.years, cfg.series, cfg.unit);
+      },
+    };
+  }
+
+  // ---------- diverging stacked columns (in up, out down) ----------
+  function diverging(container, cfg) {
+    const parts = scaffold(container, cfg);
+    cfg.series = cfg.up.concat(cfg.down); // for tooltip/table
+    function draw() {
+      beginDraw(parts);
+      const svg = parts.svg;
+      const years = cfg.years;
+      const upMax = Math.max(...years.map((_, i) => cfg.up.reduce((s, se) => s + se.values[i], 0)));
+      const dnMax = Math.max(...years.map((_, i) => cfg.down.reduce((s, se) => s + se.values[i], 0)));
+      const hi = upMax * 1.06 || 1, lo = -(dnMax * 1.06) || -1;
+      const xOf = i => M.l + (i + 0.5) / years.length * (VW - M.l - M.r);
+      const yOf = v => VH - M.b - ((v - lo) / (hi - lo)) * (VH - M.t - M.b);
+      axes(svg, niceTicks(lo, hi, 6), yOf, cfg.unit);
+      years.forEach((yr, i) => {
+        const t = el("text", { x: xOf(i), y: VH - M.b + 16, "text-anchor": "middle", class: "axis-text" }, svg);
+        t.textContent = "’" + String(yr).slice(2);
+      });
+      const band = (VW - M.l - M.r) / years.length;
+      const bw = Math.min(24, band * 0.55);
+      const zero = yOf(0);
+
+      years.forEach((_, i) => {
+        let acc = 0;
+        cfg.up.forEach((s, si) => {
+          const v = s.values[i];
+          const y1 = yOf(acc + v), y0 = yOf(acc);
+          const isTop = si === cfg.up.length - 1 || cfg.up.slice(si + 1).every(ss => ss.values[i] < 0.5);
+          const h = segH(y0 - y1, 2);
+          const d = colPath(xOf(i) - bw / 2, y0 - h, bw, h, isTop ? 4 : 0.01, false);
+          if (d) el("path", { d, fill: s.color }, svg);
+          acc += v;
+        });
+        acc = 0;
+        cfg.down.forEach((s, si) => {
+          const v = s.values[i];
+          const y0 = yOf(-acc), y1 = yOf(-(acc + v));
+          const isBot = si === cfg.down.length - 1 || cfg.down.slice(si + 1).every(ss => ss.values[i] < 0.5);
+          const h = segH(y1 - y0, 2);
+          const d = colPath(xOf(i) - bw / 2, y0 + 2, bw, h, isBot ? 4 : 0.01, true);
+          if (d) el("path", { d, fill: s.color }, svg);
+          acc += v;
+        });
+      });
+      el("line", { x1: M.l, x2: VW - M.r, y1: zero, y2: zero, class: "axis-line" }, svg);
+
+      endDraw(parts, xOf, years);
+    }
+    renderLegend(parts.legend, cfg.series);
+    draw();
+    renderTwin(parts.tbl, cfg.years, cfg.series, cfg.unit);
+    attachHover(parts, cfg);
+    return {
+      update(newCfg) {
+        applyUpdate(parts, cfg, newCfg);
+        cfg.series = cfg.up.concat(cfg.down);
+        renderLegend(parts.legend, cfg.series);
+        draw();
+        renderTwin(parts.tbl, cfg.years, cfg.series, cfg.unit);
+      },
+    };
+  }
+
+  return { lines, barsLine, diverging };
+})();
+
+</script>
+<script>
+/* ============================================================
+   AI Bubble Simulator — UI wiring
+   Sliders, scenarios, bubble gauge, verdict, tiles, charts,
+   company tables, methodology. Everything re-computes live.
+   ============================================================ */
+
+(function () {
+  const D = window.DATA, Mo = window.Model;
+  const $ = id => document.getElementById(id);
+  const fmtB = Mo.fmtB;
+
+  let params = Object.assign({}, D.defaults);
+  let selectedYear = D.meta.presentYear;
+  let proj = Mo.project(D, params);
+  const widgets = {}; // id -> {range, num}
+
+  // ---------- theme ----------
+  // localStorage can throw in sandboxed iframes — never let that kill the app
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no-op */ } },
+  };
+  (function themeInit() {
+    const stored = store.get("aibubble-theme");
+    if (stored) document.documentElement.dataset.theme = stored;
+    $("themeToggle").addEventListener("click", () => {
+      const cur = document.documentElement.dataset.theme ||
+        (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const next = cur === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      store.set("aibubble-theme", next);
+    });
+  })();
+
+  // ---------- sliders ----------
+  function buildControls() {
+    const root = $("controlGroups");
+    root.innerHTML = "";
+    D.sliders.forEach(g => {
+      const div = document.createElement("div");
+      div.className = "ctl-group";
+      div.innerHTML = `<div class="eyebrow"><span class="swatch" style="background:${g.color}"></span>${g.group}</div>`;
+      g.items.forEach(it => {
+        const wrap = document.createElement("div");
+        wrap.className = "ctl";
+        wrap.innerHTML = `
+          <div class="ctl-label-row">
+            <label for="sl-${it.id}">${it.label}</label>
+            <input class="ctl-val" id="num-${it.id}" type="number" min="${it.min}" max="${it.max}" step="${it.step}" value="${params[it.id]}" aria-label="${it.label} value in ${it.unit}">
+          </div>
+          <input id="sl-${it.id}" type="range" min="${it.min}" max="${it.max}" step="${it.step}" value="${params[it.id]}">
+          ${it.hint ? `<div class="ctl-hint">${it.hint} · ${it.unit}</div>` : `<div class="ctl-hint">${it.unit}</div>`}`;
+        div.appendChild(wrap);
+        const range = wrap.querySelector(`#sl-${it.id}`);
+        const num = wrap.querySelector(`#num-${it.id}`);
+        widgets[it.id] = { range, num };
+        const onChange = v => {
+          const val = Math.max(it.min, Math.min(it.max, parseFloat(v)));
+          if (isNaN(val)) { num.value = params[it.id]; return; }
+          params[it.id] = val;
+          range.value = val; num.value = val;
+          clearScenario();
+          scheduleUpdate();
+        };
+        range.addEventListener("input", e => onChange(e.target.value));
+        num.addEventListener("change", e => onChange(e.target.value));
+      });
+      root.appendChild(div);
+    });
+  }
+  function syncWidgets() {
+    for (const id in widgets) {
+      widgets[id].range.value = params[id];
+      widgets[id].num.value = params[id];
+    }
+  }
+
+  // ---------- scenarios ----------
+  function buildScenarios() {
+    const seg = $("scenarios");
+    seg.innerHTML = "";
+    Object.entries(D.scenarios).forEach(([key, sc]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = sc.label;
+      b.dataset.key = key;
+      b.setAttribute("aria-pressed", key === "base" ? "true" : "false");
+      b.addEventListener("click", () => {
+        params = Object.assign({}, D.defaults, sc.overrides);
+        seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+        syncWidgets();
+        scheduleUpdate();
+      });
+      seg.appendChild(b);
+    });
+    $("resetBtn").addEventListener("click", () => {
+      params = Object.assign({}, D.defaults);
+      $("scenarios").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.key === "base" ? "true" : "false"));
+      syncWidgets();
+      scheduleUpdate();
+    });
+  }
+  function clearScenario() {
+    $("scenarios").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", "false"));
+  }
+
+  // ---------- year scrubber ----------
+  (function scrubInit() {
+    const [y0, y1] = D.meta.horizon;
+    const s = $("yearScrub");
+    s.min = y0; s.max = y1; s.value = selectedYear;
+    $("scrubMin").textContent = y0; $("scrubMax").textContent = y1;
+    s.addEventListener("input", () => {
+      selectedYear = +s.value;
+      renderYearViews();
+    });
+  })();
+  function setYear(y) {
+    selectedYear = y;
+    $("yearScrub").value = y;
+    renderYearViews();
+  }
+
+  // ---------- bubble gauge ----------
+  function renderBubble() {
+    const svg = $("bubbleGauge");
+    const r = proj.rows[selectedYear];
+    const v = proj.verdict;
+    const idx = r.bubbleIndex;
+    const popped = v.crunchYear && selectedYear >= v.crunchYear;
+    const rad = Math.max(26, Math.min(104, 26 + idx * 13));
+    svg.innerHTML = "";
+    const NS = "http://www.w3.org/2000/svg";
+    const mk = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; };
+    if (!popped) {
+      const defs = document.createElementNS(NS, "defs");
+      defs.innerHTML = `
+        <radialGradient id="bg1" cx="38%" cy="34%" r="72%">
+          <stop offset="0%" stop-color="var(--c-demand)" stop-opacity="0.05"/>
+          <stop offset="62%" stop-color="var(--c-vc)" stop-opacity="0.12"/>
+          <stop offset="86%" stop-color="var(--c-compute)" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="var(--c-demand)" stop-opacity="0.55"/>
+        </radialGradient>`;
+      svg.appendChild(defs);
+      mk("circle", { cx: 120, cy: 120, r: rad, fill: "url(#bg1)", stroke: v.crunchYear ? "var(--status-critical)" : "var(--axis)", "stroke-width": 1.5 });
+      mk("ellipse", { cx: 120 - rad * 0.35, cy: 120 - rad * 0.45, rx: rad * 0.28, ry: rad * 0.16, fill: "var(--surface)", opacity: 0.75, transform: `rotate(-28 ${120 - rad * 0.35} ${120 - rad * 0.45})` });
+    } else {
+      // the pop: burst spikes + escaping droplets
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        const r1 = 22, r2 = 42 + (i % 3) * 12;
+        mk("line", {
+          x1: 120 + Math.cos(a) * r1, y1: 120 + Math.sin(a) * r1,
+          x2: 120 + Math.cos(a) * r2, y2: 120 + Math.sin(a) * r2,
+          stroke: "var(--status-critical)", "stroke-width": 2.5, "stroke-linecap": "round",
+        });
+      }
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + 0.4;
+        mk("circle", { cx: 120 + Math.cos(a) * 62, cy: 120 + Math.sin(a) * 62, r: 3.5 + (i % 2) * 2, fill: "var(--c-demand)", opacity: 0.6 });
+      }
+    }
+    $("bubbleCaption").innerHTML = popped
+      ? `popped ~${v.crunchYear}`
+      : `bubble index ${idx.toFixed(1)}× <span title="cumulative buildout spend vs cumulative AI revenue">ⓘ</span>`;
+  }
+
+  // ---------- verdict ----------
+  function renderVerdict() {
+    const v = proj.verdict;
+    const [y0, y1] = D.meta.horizon;
+    const last = proj.rows[y1];
+    const cumCapex = proj.years.reduce((s, y) => s + proj.rows[y].capex, 0);
+    const cumRev = last.cumRev;
+    const h = $("verdictHeadline"), d = $("verdictDetail");
+    let head, det;
+    if (v.justifiedYear) {
+      head = `The math closes: revenue covers the buildout from <span class="ok-green">${v.justifiedYear}</span>.`;
+    } else if (v.crunchYear) {
+      head = `The music stops around <span class="pop-red">${v.crunchYear}</span> — burn outruns fresh money.`;
+    } else {
+      head = `Never justified by ${y1} — but the money doesn't run out either. A zombie bubble.`;
+    }
+    det = `Cumulative ${y0}–${y1}: ${fmtB(cumCapex)} of AI capex against ${fmtB(cumRev)} of end-customer AI revenue. `;
+    det += `In ${y1}, the fleet needs ${fmtB(last.requiredRev)}/yr to pay for itself (depreciation + running costs + ${params.hurdle}% return) vs ${fmtB(last.endRev)}/yr of projected revenue — a ${last.gap > 0 ? "shortfall" : "surplus"} of ${fmtB(Math.abs(last.gap))}. `;
+    if (v.crunchYear) {
+      const c = proj.rows[v.crunchYear];
+      if (v.isBust) {
+        const pv = proj.rows[v.crunchYear - 1];
+        det += `In ${v.crunchYear}, AI capex drops ${Math.round((1 - c.capex / pv.capex) * 100)}% year-over-year while the fleet is still ${fmtB(c.gap)}/yr short of paying for itself — that combination means write-downs, not buybacks.`;
+      } else {
+        det += `In ${v.crunchYear}, labs + startups burn ${fmtB(c.fundingNeed)} against ${fmtB(c.fundingAvail)} of available VC and circular financing.`;
+      }
+    } else if (!v.justifiedYear) {
+      det += `VC plus circular vendor money (${fmtB(last.vc + last.vendor)}/yr in ${y1}) keeps covering the burn, so nothing forces the correction inside the horizon.`;
+    } else {
+      const j = proj.rows[v.justifiedYear];
+      det += `Break-even arrives with ${fmtB(j.endRev)} of revenue against a required ${fmtB(j.requiredRev)}.`;
+    }
+    if (v.peakCapexYear > y0 && v.peakCapexYear < y1 && proj.rows[y1].capex < proj.rows[v.peakCapexYear].capex * 0.95) {
+      det += ` Capex peaks in ${v.peakCapexYear} at ${fmtB(proj.rows[v.peakCapexYear].capex)}/yr, then rolls over.`;
+    }
+    h.innerHTML = head;
+    d.innerHTML = det;
+  }
+
+  // ---------- tiles ----------
+  function renderTiles() {
+    const r = proj.rows[selectedYear];
+    const prev = proj.rows[selectedYear - 1];
+    const t = $("tiles");
+    const delta = (cur, pre, upBad, fmt) => {
+      if (!pre && pre !== 0) return "";
+      const df = cur - pre;
+      if (Math.abs(df) < 0.05) return `<div class="t-delta">— vs ${selectedYear - 1}</div>`;
+      const cls = df > 0 ? (upBad ? "up-bad" : "up-good") : (upBad ? "up-good" : "up-bad");
+      return `<div class="t-delta ${cls}">${df > 0 ? "▲" : "▼"} ${fmt(Math.abs(df))} vs ${selectedYear - 1}</div>`;
+    };
+    const tiles = [
+      { label: "Money in", sw: "var(--c-demand)", val: fmtB(r.moneyIn), d: delta(r.moneyIn, prev && prev.moneyIn, false, fmtB), title: "End revenue + VC & equity + debt + big-tech subsidy" },
+      { label: "of which real revenue", sw: "var(--c-demand)", val: fmtB(r.endRev), d: delta(r.endRev, prev && prev.endRev, false, fmtB), title: "Paid by actual customers" },
+      { label: "Back to investors", sw: "var(--c-returns)", val: fmtB(r.returns), d: delta(r.returns, prev && prev.returns, false, fmtB), title: "Buybacks + dividends, AI-attributable" },
+      { label: "Required revenue", sw: "var(--c-capex)", val: fmtB(r.requiredRev), d: delta(r.requiredRev, prev && prev.requiredRev, true, fmtB), title: "What the fleet must earn per year" },
+      { label: "Cumulative gap", sw: "var(--c-capex)", val: fmtB(r.cumGap), d: delta(r.cumGap, prev && prev.cumGap, true, fmtB), title: "Buildout spend minus revenue, since 2024" },
+      { label: "AI capacity online", sw: "var(--c-compute)", val: Mo.fmtGw(r.gwOnline), d: delta(r.gwOnline, prev && prev.gwOnline, false, v => v.toFixed(1) + " GW"), title: "Cumulative datacenter capacity" },
+    ];
+    t.innerHTML = tiles.map(x => `
+      <div class="tile" title="${x.title}">
+        <div class="t-label"><span class="swatch" style="background:${x.sw}"></span>${x.label} · ${selectedYear}</div>
+        <div class="t-value">${x.val}</div>
+        ${x.d}
+      </div>`).join("");
+  }
+
+  // ---------- sankey ----------
+  function renderSankey() {
+    const r = proj.rows[selectedYear];
+    const flows = Mo.flowsFor(D, params, r);
+    Sankey.render($("sankey"), $("sankeyTip"), flows, fmtB);
+    Sankey.tableTwin($("sankeyTable"), flows, fmtB);
+    $("yearOut").textContent = selectedYear;
+    $("flowLegend").innerHTML = [
+      ["var(--c-demand)", "customer demand"],
+      ["var(--c-vc)", "VC & labs"],
+      ["var(--c-debt)", "debt"],
+      ["var(--c-compute)", "big-tech / clouds"],
+      ["var(--c-capex)", "hardware"],
+      ["var(--c-returns)", "investor returns"],
+      ["var(--c-leak)", "leakage to economy"],
+      ["var(--c-circular)", "circular financing ↺"],
+    ].map(([c, l]) => `<span class="key"><span class="swatch" style="background:${c}"></span>${l}</span>`).join("");
+  }
+
+  // ---------- charts ----------
+  let gapChart, capexChart, inoutChart, capChart;
+  function chartData() {
+    const ys = proj.years;
+    const g = k => ys.map(y => proj.rows[y][k]);
+    return {
+      years: ys,
+      required: g("requiredRev"), endRev: g("endRev"),
+      capex: g("capex"), depreciation: g("depreciation"),
+      vc: ys.map(y => proj.rows[y].vc + proj.rows[y].neoEquity),
+      debt: g("debt"), treasury: g("treasury"),
+      returns: g("returns"), leak: g("leak"),
+      gwAdded: g("gwAdded"), gwOnline: g("gwOnline"),
+    };
+  }
+  function buildCharts() {
+    const c = chartData();
+    const click = { onYearClick: setYear };
+    gapChart = Charts.lines($("gapCard"), Object.assign({
+      eyebrow: "the gap", title: "What the fleet must earn vs what customers pay",
+      sub: "Required = (depreciation + opex + hurdle return on the fleet) × 1.2 for the layers above the metal. Click a year to pin the flow map.",
+      years: c.years, unit: "$B", wash: [0, 1],
+      series: [
+        { name: "Required revenue", short: "Required", color: "var(--c-capex)", values: c.required },
+        { name: "AI end-revenue", short: "Actual", color: "var(--c-demand)", values: c.endRev },
+      ],
+    }, click));
+    capexChart = Charts.barsLine($("capexCard"), Object.assign({
+      eyebrow: "the buildout", title: "AI capex and the depreciation wall behind it",
+      sub: "Every year of capex becomes a depreciation bill for the next " + params.deprYears + " years.",
+      years: c.years, unit: "$B",
+      series: [
+        { name: "AI capex", color: "var(--c-capex)", values: c.capex },
+        { name: "Depreciation", color: "var(--c-compute)", values: c.depreciation, type: "line" },
+      ],
+    }, click));
+    inoutChart = Charts.diverging($("inoutCard"), Object.assign({
+      eyebrow: "system boundary", title: "Money entering vs leaving the ecosystem",
+      sub: "Up: where the cash comes from. Down: buybacks + dividends out, and leakage into the wider economy.",
+      years: c.years, unit: "$B",
+      up: [
+        { name: "Customer revenue", color: "var(--c-demand)", values: c.endRev },
+        { name: "VC &amp; equity", color: "var(--c-vc)", values: c.vc },
+        { name: "Debt", color: "var(--c-debt)", values: c.debt },
+        { name: "Big-tech subsidy", color: "var(--c-compute)", values: c.treasury },
+      ],
+      down: [
+        { name: "To investors", color: "var(--c-returns)", values: c.returns },
+        { name: "Leakage", color: "var(--c-leak)", values: c.leak },
+      ],
+    }, click));
+    capChart = Charts.barsLine($("capacityCard"), Object.assign({
+      eyebrow: "physical buildout", title: "AI datacenter capacity, gigawatts",
+      sub: "At $" + params.costPerGw + "B per GW. McKinsey's 2030 base case is ~156 GW of AI capacity.",
+      years: c.years, unit: "GW",
+      series: [
+        { name: "GW added", color: "var(--c-capex)", values: c.gwAdded },
+        { name: "GW online", color: "var(--c-compute)", values: c.gwOnline, type: "line" },
+      ],
+    }, click));
+  }
+  function updateCharts() {
+    const c = chartData();
+    gapChart.update({ years: c.years, series: [
+      { name: "Required revenue", short: "Required", color: "var(--c-capex)", values: c.required },
+      { name: "AI end-revenue", short: "Actual", color: "var(--c-demand)", values: c.endRev },
+    ]});
+    capexChart.update({ years: c.years,
+      sub: "Every year of capex becomes a depreciation bill for the next " + params.deprYears + " years.",
+      series: [
+      { name: "AI capex", color: "var(--c-capex)", values: c.capex },
+      { name: "Depreciation", color: "var(--c-compute)", values: c.depreciation, type: "line" },
+    ]});
+    inoutChart.update({ years: c.years,
+      up: [
+        { name: "Customer revenue", color: "var(--c-demand)", values: c.endRev },
+        { name: "VC &amp; equity", color: "var(--c-vc)", values: c.vc },
+        { name: "Debt", color: "var(--c-debt)", values: c.debt },
+        { name: "Big-tech subsidy", color: "var(--c-compute)", values: c.treasury },
+      ],
+      down: [
+        { name: "To investors", color: "var(--c-returns)", values: c.returns },
+        { name: "Leakage", color: "var(--c-leak)", values: c.leak },
+      ]});
+    capChart.update({ years: c.years,
+      sub: "At $" + params.costPerGw + "B per GW. McKinsey's 2030 base case is ~156 GW of AI capacity.",
+      series: [
+      { name: "GW added", color: "var(--c-capex)", values: c.gwAdded },
+      { name: "GW online", color: "var(--c-compute)", values: c.gwOnline, type: "line" },
+    ]});
+  }
+
+  // ---------- companies ----------
+  function renderCompanies() {
+    const root = $("companiesRoot");
+    root.innerHTML = "";
+    D.groups.forEach(g => {
+      const div = document.createElement("div");
+      div.className = "company-group";
+      const money = v => v == null ? "—" : (v < 0 ? "−" + fmtB(-v) : fmtB(v));
+      let head = `<tr><th>Company</th><th style="text-align:left">Period</th>`;
+      g.cols.forEach(([, label]) => head += `<th>${label}</th>`);
+      head += `<th style="text-align:left">Notes</th></tr>`;
+      let rows = "";
+      g.companies.forEach(cp => {
+        rows += `<tr><td>${cp.name}</td><td style="text-align:left"><span class="src-tag">${cp.period}</span></td>`;
+        g.cols.forEach(([key]) => {
+          let v = cp[key];
+          if (key === "shareholder") v = (cp.buybacks != null || cp.dividends != null) ? (cp.buybacks || 0) + (cp.dividends || 0) : cp.shareholder;
+          rows += `<td>${money(v)}</td>`;
+        });
+        rows += `<td style="text-align:left"><span class="src-tag">${cp.tag || ""}</span></td></tr>`;
+      });
+      div.innerHTML = `
+        <div class="cg-head">
+          <h3><span class="swatch" style="background:${D.GROUP_COLORS[g.id]}"></span>${g.name}</h3>
+          <span class="cg-note">${g.note}</span>
+        </div>
+        <div class="table-scroll"><table class="data"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+      root.appendChild(div);
+    });
+  }
+
+  // ---------- methodology ----------
+  function renderMethod() {
+    const A = D.aggregates, S = D.splits;
+    $("methodRoot").innerHTML = `
+    <div class="method-cols">
+      <div class="method-block">
+        <h3>The system boundary</h3>
+        <p>The "ecosystem" is everyone who earns AI money: labs, startups, hyperscalers' AI operations, neoclouds, chip makers, fabs.
+        <strong>Money in</strong> = end-customer revenue + VC + debt + the subsidy big tech pays from non-AI profits.
+        <strong>Money out</strong> = buybacks and dividends back to shareholders, plus leakage — construction wages, electricity, salaries, components — into the wider economy.
+        Circular financing (chip makers and clouds investing in their own customers, ~${fmtB(D.defaults.vendor26)}/yr in 2026) stays inside the loop, which is exactly why it's drawn as a loop.</p>
+      </div>
+      <div class="method-block">
+        <h3>The gap equation</h3>
+        <p>Each year the installed fleet must earn:</p>
+        <p><code>required = (depreciation + opex + hurdle × net fleet) × ${S.nonInfraCostFactor}</code></p>
+        <p>Straight-line depreciation over your chosen life, opex at $/GW-year, a required return on undepreciated capex, and ×${S.nonInfraCostFactor} because end revenue must also feed the model and app layers above the metal.
+        For calibration: Kupperman's break-even estimate on 2025 capex alone is ~${fmtB(A.kuppermanBreakeven)}/yr; Bain says ~${fmtB(A.bainNeed2030)}/yr is needed by 2030 (with a ~${fmtB(A.bainShortfall)} shortfall); David Cahn's 2026 version of the question is ${fmtB(A.cahnQuestion)}. This model reproduces those magnitudes at default settings.</p>
+      </div>
+      <div class="method-block">
+        <h3>Split assumptions (fixed)</h3>
+        <ul>
+          <li>End revenue: ${pct(S.endRevToLabs)} labs, ${pct(S.endRevToClouds)} AI cloud, ${pct(S.endRevToStartups)} app startups</li>
+          <li>${pct(S.vcToLabs)} of VC goes to labs (OpenAI + Anthropic took 43% of <em>all</em> world VC in H1 2026)</li>
+          <li>Labs spend $${S.labComputeRatio.toFixed(2)} on compute per $1 of revenue in 2026, gliding to $${S.matureLabCompute.toFixed(2)} by 2032 — the scale-economics bet</li>
+          <li>Neoclouds carry ${pct(S.neocloudShare)} of AI compute; hyperscalers pay ${pct(S.hyperscalerCapexShare)} of capex</li>
+          <li>${pct(S.fabsShare)} of chip revenue flows through to TSMC, memory and components</li>
+        </ul>
+      </div>
+      <div class="method-block">
+        <h3>What this toy ignores</h3>
+        <ul>
+          <li>Taxes, FX, working capital, and the difference between cash and accrual anything</li>
+          <li>Model quality: a capability jump (or wall) changes demand in ways no slider captures</li>
+          <li>China and export controls; sovereign AI funds</li>
+          <li>Contracted-but-undelivered obligations: ~${fmtB(A.contractedBacklog)} of RPO sits across Microsoft, Oracle, Google and CoreWeave — committed future flows this model only implies</li>
+          <li>Secondary effects: memory-price mean reversion, power constraints (~11 GW of announced capacity shows no construction), refinancing walls</li>
+        </ul>
+      </div>
+      <div class="method-block" style="grid-column: 1 / -1;">
+        <h3>Sources & provenance</h3>
+        <ul class="sources-list">${D.sources.map(s => `<li>${s}</li>`).join("")}</ul>
+      </div>
+    </div>`;
+    function pct(v) { return Math.round(v * 100) + "%"; }
+  }
+
+  // ---------- update orchestration ----------
+  let raf = null;
+  function scheduleUpdate() {
+    if (raf) return;
+    raf = requestAnimationFrame(() => { raf = null; update(); });
+  }
+  function update() {
+    proj = Mo.project(D, params);
+    renderVerdict();
+    renderYearViews();
+    updateCharts();
+  }
+  function renderYearViews() {
+    renderSankey();
+    renderTiles();
+    renderBubble();
+  }
+
+  // ---------- boot ----------
+  buildControls();
+  buildScenarios();
+  buildCharts();
+  renderCompanies();
+  renderMethod();
+  renderVerdict();
+  renderYearViews();
+  $("footNote").innerHTML =
+    `Data compiled ${D.meta.updated} from public filings, analyst reports and press coverage; private-company figures are estimates and several (Anthropic's claimed run-rate, private valuations) are unaudited. ` +
+    `This is a toy model for arguing about scenarios — not a forecast, and very much not investment advice. All flows in billions of USD per year.`;
+})();
+
+</script>

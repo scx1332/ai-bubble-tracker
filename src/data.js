@@ -152,6 +152,7 @@ window.DATA = (function () {
         { name: "ByteDance", logo: "bytedance", period: "FY2025 est", revenue: 186, netIncome: null, capex: 23, capexGuide: 29.4, aiRev: null, shareholder: null, tag: "largest AI capex in China, with up to $70B reportedly under consideration; valued ~$550B; Doubao runs >200M DAU on under $54M of annualized revenue" },
         { name: "Tencent", logo: "tencent", period: "FY2025", revenue: 107.5, netIncome: 32.1, capex: 11.3, capexGuide: null, aiRev: null, shareholder: null, tag: "capex only 10.5% of revenue — chip curbs blocked planned spend; AI product spend doubling to ~$5.2B in 2026; new AI products cost ~$1.3B of operating profit in Q1 alone" },
         { name: "Baidu", logo: "baidu", period: "FY2025 + Q1 2026", revenue: 18.5, netIncome: 0.8, capex: 1.7, capexGuide: null, aiRev: 5.1, shareholder: null, tag: "AI crossed 52% of core revenue, partly because legacy search ads fell 29%; Kunlunxin spin-off re-rated from ~$3B to a ~$50B listing target in seven months" },
+        { name: "China Mobile, Telecom & Unicom", logo: "telco", period: "2026 plans", revenue: null, netIncome: null, capex: 12, capexGuide: 38.3, aiRev: 16.9, shareholder: null, tag: "state channel: all three are cutting total capex while raising the compute slice (China Mobile's +62%) — reallocation, not expansion. Cloud revenue is Tianyi's broad definition; the three telco clouds are >22% of Chinese public-cloud IaaS" },
       ],
     },
     {
@@ -306,8 +307,8 @@ window.DATA = (function () {
     //   (~$1B across DeepSeek, Zhipu, Moonshot, MiniMax and 01.AI combined);
     //   almost all of it is AI cloud and government/enterprise tenders.
     history: {
-      2024: { aiCapex: 50, endRev: 7, vc: 45, debt: 25, returns: 40, gwAdded: 2 },
-      2025: { aiCapex: 88, endRev: 16, vc: 58, debt: 35, returns: 45, gwAdded: 4 },
+      2024: { aiCapex: 48, endRev: 6, vc: 12, debt: 25, returns: 40, gwAdded: 3 },
+      2025: { aiCapex: 85, endRev: 14, vc: 13, debt: 35, returns: 45, gwAdded: 5 },
     },
 
     splits: {
@@ -353,29 +354,45 @@ window.DATA = (function () {
     },
 
     defaults: {
-      // demand. Built up as roughly $20B of AI cloud (Alibaba's AI is ~30% of
-      // external cloud revenue, Baidu's AI cloud runs ~$5B annualized, plus
-      // Tencent, Huawei and the telcos), ~$5B of model API and subscriptions
-      // (Goldman puts 2026 at RMB 35B), and ~$5B of enterprise AI tenders and
-      // applications. For scale: China is ~46% of the world's AI users and
-      // ~1.2% of global AI revenue.
-      endRev26: 30,
+      // demand. Built up as ~$11.5B of AI cloud (Omdia: RMB 80bn for 2026,
+      // after RMB 56.7bn in 2025), ~$5B of model API and subscriptions
+      // (Goldman: RMB 35bn), and ~$9B of enterprise AI tenders, applications
+      // and consumer spend. Two calibration facts: all of Chinese cloud
+      // infrastructure ($52B in 2025) was smaller than Google Cloud alone,
+      // and China runs ~46% of the world's AI users on ~1.2% of global AI
+      // revenue.
+      endRev26: 26,
       demandGrowth: 65,
       demandFade: 15,
-      // buildout — ~$88B actual 2025 (Bernstein basis) → ~$115B 2026E
-      capex26: 115,
+      // buildout. The softest input here: bank estimates for 2026 span
+      // $69B (JPMorgan, datacenter capex) to $102B (Goldman, hyperscaler AI
+      // capex), with Futurum's all-channel 2025 figure at ~$125B. The listed
+      // floor alone — Alibaba, ByteDance, Tencent, Baidu — is ~$65B, plus
+      // ~$12B of telco compute budget and state and provincial projects.
+      capex26: 105,
       capexGrowth: 25,      // state "AI+" push plus the platforms' raised plans
       capexFade: 10,
       gpuShare: 55,         // cheaper silicon, so relatively more spent on shells and power
       costPerGw: 35,        // cheaper land, construction and power than the US
       deprYears: 5,
-      importShare: 20,      // domestic share of AI chip value ~79% in 2026, up from ~66%
-      // funding. Chinese AI VC ran ~$10–11B/yr through 2024–25 and jumped to
-      // ~$30–35B in H1 2026 alone (DeepSeek $7.4B, StepFun $2.5B, Moonshot
-      // $2B). Roughly half to two-thirds of it is state money: government
-      // guidance funds supply ~55% of all LP capital in Chinese PE/VC and
-      // 60–70% of deep-tech investment, so this line is counter-cyclical and
-      // does not price-discover the way the US venture layer does.
+      // Forecasters model foreign silicon at ~21% of China's 2026 AI chip
+      // value, but NVIDIA reported *zero* datacenter compute revenue from
+      // China through Q1 FY2027 and guided the next quarter to zero as well;
+      // the first H200 shipments began mid-July 2026 at trivial volume.
+      // Through mid-2026 the binding constraint was Beijing, not Washington.
+      importShare: 10,
+      // funding. Chinese AI VC ran ~$11–12B/yr through 2024–25, then tripled:
+      // $16.2B in Q1 2026 alone (+185% YoY), with DeepSeek raising $7.4B at
+      // ~$50B and Moonshot re-rating 7× in six months. The US-to-China ratio
+      // compressed from ~23:1 to ~9–10:1.
+      // IMPORTANT: this line is the *deployed* flow, not announced capital.
+      // Headline state vehicles are an order of magnitude larger than what
+      // actually reaches operating companies — Big Fund III has put roughly
+      // 5–6% of its RMB 344bn headline to work in 26 months, Beijing's AI
+      // fund deployed 3.5% in its first year, and Big Fund I and II are net
+      // sellers in 2026. Treating announced programs (the drafted RMB 2tn
+      // national compute plan, ~$1.5tn of announced fund capital) as spending
+      // would overstate this bloc by an order of magnitude.
       vc26: 70,
       vcGrowth: 5,
       debt26: 60,
@@ -396,7 +413,7 @@ window.DATA = (function () {
         { id: "demandFade", label: "Growth fade per year", unit: "pp", min: 0, max: 40, step: 1 },
       ]},
       { group: "Buildout", color: "var(--c-capex)", items: [
-        { id: "capex26", label: "AI capex 2026", unit: "$B", min: 20, max: 500, step: 10, hint: "$70B in 2025; the drafted national compute plan would add far more" },
+        { id: "capex26", label: "AI capex 2026", unit: "$B", min: 20, max: 500, step: 5, hint: "bank estimates for 2026 span $69B to $102B" },
         { id: "capexGrowth", label: "Capex growth 2027", unit: "%", min: -50, max: 100, step: 5 },
         { id: "capexFade", label: "Capex growth fade", unit: "pp", min: 0, max: 50, step: 1 },
         { id: "gpuShare", label: "Chips & servers share", unit: "%", min: 30, max: 80, step: 5 },
@@ -405,7 +422,7 @@ window.DATA = (function () {
         { id: "importShare", label: "Imported silicon share", unit: "%", min: 0, max: 70, step: 5, hint: "The one edge where this bloc's money leaves for the other" },
       ]},
       { group: "Funding", color: "var(--c-debt)", items: [
-        { id: "vc26", label: "State funds & VC 2026", unit: "$B", min: 0, max: 300, step: 5, hint: "Big Fund tranches, national and provincial AI funds, plus venture" },
+        { id: "vc26", label: "State funds & VC 2026", unit: "$B", min: 0, max: 300, step: 5, hint: "money actually deployed, not announced — headline programs run ~10× larger" },
         { id: "vcGrowth", label: "Funding growth", unit: "%/yr", min: -60, max: 60, step: 5 },
         { id: "debt26", label: "Debt & govt bonds 2026", unit: "$B", min: 0, max: 300, step: 5 },
         { id: "debtGrowth", label: "Debt growth", unit: "%/yr", min: -60, max: 60, step: 5 },
@@ -482,7 +499,10 @@ window.DATA = (function () {
     "China bloc — analysis: SemiAnalysis (Ascend production ramp, CXMT), TrendForce and Digitimes (domestic share of AI chip value 66% → 79%), Bernstein (China AI accelerator market ~$36B in 2025), Dell'Oro and IDC (China datacenter capex), PitchBook and Crunchbase (China AI venture ~$10–11B/yr 2024–25, ~$30–35B H1 2026)",
     "China bloc — state capital: government guidance funds (2,178 funds, ~$900B raised) supply ~55% of LP capital in Chinese PE/VC; Big Fund phases I–III ~$96B; National VC Guidance Fund (RMB 100B seed, RMB 1T target); NDRC national compute plan reported at RMB 2T but still in draft",
     "China bloc — pricing and volume: published API price lists (DeepSeek, Z.ai, OpenAI, Anthropic, Google) and OpenRouter model data, July 2026 — Chinese models at roughly a tenth to a thirtieth of US prices while serving a majority of US firms' token volume. China runs ~46% of the world's AI users on ~1.2% of global AI revenue; national token consumption went from ~0.1T/day in early 2024 to ~140T/day by March 2026",
-    "China bloc — utilization: reported national average AI compute utilization ~37% with >60% idle across some state clusters, against >65% at the tier-1 hyperscalers and Alibaba's \"not a single card is idle\" — Chinese coverage describes it as shortage and idleness coexisting. No official figure is published; all are media-attributed",
+    "China bloc — utilization: reported national average AI compute utilization ~32–37%, with western-region hubs at 20–30% and 100+ projects canceled in 18 months, against tier-1 platforms reporting no spare capacity and Chinese AI firms rationing service in 2026. Inference did not absorb the stranded western capacity because it needs low latency and stays coastal. No official figure is published; all are media-attributed",
+    "China bloc — capex estimates span JPMorgan ($69B datacenter capex, 2026E), Goldman Sachs ($102B hyperscaler AI capex 2026E; $57B big-four 2025), Bernstein (~$91B total 2025), Futurum (~$125B all-channel 2025) and Jefferies ($124B big-four 2023–25 against $694B for US peers). Definitions differ enough that the spread is real, not resolvable",
+    "China bloc — announced vs deployed: Big Fund III has deployed roughly 5–6% of its RMB 344bn headline into operating companies in 26 months, Beijing's municipal AI fund 3.5% in year one, and Big Fund I and II are net sellers in 2026. The State Council's AI+ initiative and the 15th Five-Year Plan set penetration and R&D targets with no money attached; the RMB 2tn national compute plan is a draft. This model's funding line is deployed flow, not announcements",
+    "China bloc — export controls: NVIDIA reported no datacenter Hopper shipments to China in Q1 FY2027 (against $4.6B a year earlier) and guided the following quarter to zero; its 10-K describes the company as effectively foreclosed from China's datacenter compute market. Through mid-2026 the binding constraint was Beijing rather than Washington — Chinese customs and the CAC blocked flows that US licenses permitted. First H200 shipments began mid-July 2026 at trivial volume",
   ];
 
   return { groups, GROUP_COLORS, blocs, defaults: blocs.us.defaults, sliders: blocs.us.sliders,
